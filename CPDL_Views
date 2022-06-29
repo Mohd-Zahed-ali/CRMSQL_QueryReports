@@ -1,0 +1,243 @@
+/****** Object:  View [dbo].[udv_processofPSD]    Script Date: 29-06-2022 12:48:56 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+ALTER view  [dbo].[udv_processofPSD]
+as
+(select b.PSDProcess,0[PSDMAster],b.iTransId,b.sName [Booking No.],b.iAssignedTo,b.iStatus,''[Narration],0 [PaymentClear],0 [ApprovalStatus],isnull(sa.TIllReceivedAmount,0)[TIllReceivedAmount],isnull(sa.Amount,0)[Amount],isnull(sa.AmountReceivedNew,0)[AmountReceivedNew],isnull(sa.DueDate,'')[DueDate],0 [Received AMount],''[CurrentDate],isnull(sa.iMasterId,0)[iMasterId],isnull(sa.InvoiceType,0)[InvoiceType] from vCrm_Bookings b with(nolock)
+left join vCore_SalesInvoicePSD sa with(nolock) on b.iTransId=sa.BookingNo 
+union
+select b.PSDProcess,PSD.iMasterId,b.iTransId,b.sName,b.iAssignedTo,b.iStatus,isnull(PSD.Narration,''),isnull(PSD.PaymentClear,0),isnull(PSD.iApprovalStatus,0),0,0,0,'',isnull(PSD.ReceivedAmount,0)[ReceivedAmount],isnull(PSD.CurrentDate,'')[CurrentDate],0,0  from vCrm_Bookings b with(nolock)
+left join vCore_PaymentReceivedPSD PSD with(nolock) on b.iTransId=PSD.BookingNo)
+GO
+-------------------------main view------------------------
+USE [Focus8050]
+GO
+
+/****** Object:  View [dbo].[UDV_PSDCollectionReport]    Script Date: 29-06-2022 12:53:58 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+ALTER view  [dbo].[UDV_PSDCollectionReport] as 
+select 
+	C.sName [Branch],
+		case when aa.PropertyType=1 then 'Residential'
+		when aa.PropertyType=2 then 'Commercial'
+		else '' end [Property Type],
+		P.sName [Property],
+		P.iMasterId [iProperty],
+		A.iMasterId [iCustomerId],
+		A.sName [Customer],
+		PMS.sName [PMS Name],
+		PMS.iMasterId [iPMS],
+		PMS.UnitSize [Unit Size],
+		aa.SFTRateDP [SFT Rate DP],
+		aa.fSellingPrice [Selling Price],
+		a.Amount [Amount],
+		a.[Received AMount],
+		a.CurrentDate,
+		a.[Booking No.],
+		a.DueDate,
+		a.iTransId,
+		a.InvoiceType,
+		a.PSDProcess
+
+from 
+(select b.PSDProcess,0[PSDMAster],b.iTransId,b.sName [Booking No.],b.iAssignedTo,b.iStatus,''[Narration],0 [PaymentClear],0 [ApprovalStatus],isnull(sa.TIllReceivedAmount,0)[TIllReceivedAmount],isnull(sa.Amount,0)[Amount],isnull(sa.AmountReceivedNew,0)[AmountReceivedNew],isnull(sa.DueDate,'')[DueDate],0 [Received AMount],''[CurrentDate],isnull(sa.iMasterId,0)[iMasterId],isnull(sa.InvoiceType,0)[InvoiceType] from vCrm_Bookings b with(nolock)
+left join vCore_SalesInvoicePSD sa with(nolock) on b.iTransId=sa.BookingNo 
+union
+select b.PSDProcess,PSD.iMasterId,b.iTransId,b.sName,b.iAssignedTo,b.iStatus,isnull(PSD.Narration,''),isnull(PSD.PaymentClear,0),isnull(PSD.iApprovalStatus,0),0,0,0,'',isnull(PSD.ReceivedAmount,0)[ReceivedAmount],isnull(PSD.CurrentDate,'')[CurrentDate],0,0  from vCrm_Bookings b with(nolock)
+left join vCore_PaymentReceivedPSD PSD with(nolock) on b.iTransId=PSD.BookingNo
+) a 
+inner join vCrm_Bookings aa with(nolock) on a.iTransId=aa.iTransId 
+left join (select iMasterId,sName,UnitSize from vCrm_PMSUnits with(nolock)) PMS  on PMS.iMasterId=aa.iUnitId
+left join (select sName,iMasterId from mCore_CompanyBranch with(nolock)) C on C.iMasterId=aa.CompanyBranch 
+left join ( select iMasterId,sName from vCrm_Property with(nolock)) P on P.iMasterId=aa.iPropertyId 
+left join (select iMasterId,sName from vCore_Account with(nolock)) A on A.iMasterId=aa.iCustomerId
+where aa.iStatus=1 and aa.iApprovalStatus=114
+GO
+
+
+-------------------------------query report for cpdl-------------------------------------
+declare @STARTDATE int = dbo.DateToInt('2021-01-01')
+declare @ENDDATE int = dbo.DateToInt('2022-12-31')
+declare @Property int = 0
+declare @Customer int = 0
+declare @PMS int = 0
+
+select Branch [Company Branch],
+		aa.iProperty,
+		Property,
+		[Property Type],
+		ROW_NUMBER() OVER(ORDER BY Customer) [SI NO],
+		aa.iCustomerId,
+		Customer,
+		aa.[Booking No.],
+		aa.iPMS,
+		[PMS Name] [PMS Unit],        
+		[Unit Size],
+		[SFT Rate DP] as [SFT Rate],
+		[Selling Price] as [Total Selling Price],
+		
+		isnull((select sum(Amount) from udv_processofPSD with(nolock) where iTransId=aa.iTransId and DueDate<dbo.fCore_DateToInt(concat(datepart(year,dbo.fCore_IntToDate(@STARTDATE)),'-',datepart(month,dbo.fCore_IntToDate(@STARTDATE)),'-01'))),0)
+		[Till Receviable],
+		
+		isnull((select sum([Received AMount]) from udv_processofPSD with(nolock) where iTransId=aa.iTransId and ApprovalStatus=114 and PaymentClear=2 and
+		CurrentDate<dbo.fCore_DateToInt(concat(datepart(year,dbo.fCore_IntToDate(@STARTDATE)),'-',datepart(month,dbo.fCore_IntToDate(@STARTDATE)),'-01'))),0) 
+		[Till Received Amount],
+
+	
+	(isnull((select sum(Amount) from udv_processofPSD with(nolock) where iTransId=aa.iTransId and DueDate<dbo.fCore_DateToInt(concat(datepart(year,dbo.fCore_IntToDate(@STARTDATE)),'-',datepart(month,dbo.fCore_IntToDate(@STARTDATE)),'-01'))),0))
+	-
+	(isnull((select sum([Received AMount]) from udv_processofPSD with(nolock)  where iTransId=aa.iTransId and ApprovalStatus=114 and PaymentClear=2 and
+		CurrentDate<dbo.fCore_DateToInt(concat(datepart(year,dbo.fCore_IntToDate(@STARTDATE)),'-',datepart(month,dbo.fCore_IntToDate(@STARTDATE)),'-01'))),0))
+		[Due Amount],
+		
+ISNULL((select sum(a.Amount) from udv_processofPSD a with(nolock) where a.DueDate>=dbo.fCore_DateToInt(concat(datepart(year,dbo.fCore_IntToDate(@STARTDATE)),'-',datepart(month,dbo.fCore_IntToDate(@STARTDATE)),'-01')) and a.DueDate<=@ENDDATE
+and iTransId=aa.iTransId),0) [Schedule],
+		
+		((isnull((select sum(Amount) from udv_processofPSD with(nolock) where iTransId=aa.iTransId and DueDate<dbo.fCore_DateToInt(concat(datepart(year,dbo.fCore_IntToDate(@STARTDATE)),'-',datepart(month,dbo.fCore_IntToDate(@STARTDATE)),'-01'))),0))
+	-
+	(isnull((select sum([Received AMount]) from udv_processofPSD with(nolock)  where iTransId=aa.iTransId and ApprovalStatus=114 and PaymentClear=2 and
+		CurrentDate<dbo.fCore_DateToInt(concat(datepart(year,dbo.fCore_IntToDate(@STARTDATE)),'-',datepart(month,dbo.fCore_IntToDate(@STARTDATE)),'-01'))),0))) 
+		+
+		(ISNULL((select sum(a.Amount) from udv_processofPSD a with(nolock) where a.DueDate>=dbo.fCore_DateToInt(concat(datepart(year,dbo.fCore_IntToDate(@STARTDATE)),'-',datepart(month,dbo.fCore_IntToDate(@STARTDATE)),'-01')) and a.DueDate<=@ENDDATE
+and iTransId=aa.iTransId),0))
+		[Collection Target],
+		
+		(select top 1 convert(varchar(10),dbo.IntToDate(DueDate),105) from udv_processofPSD where iTransId=aa.iTransId and 
+DueDate>=@STARTDATE
+and DueDate<=@ENDDATE) [Current Installment Date],
+		
+
+isnull((select sum(a.[Received AMount]) from udv_processofPSD a with(nolock) where a.ApprovalStatus<>117 and a.iTransId=aa.iTransId and a.CurrentDate>=
+dbo.fCore_DateToInt(concat(datepart(year,dbo.fCore_IntToDate(@STARTDATE)),'-',datepart(month,dbo.fCore_IntToDate(@STARTDATE)),'-01'))  and a.CurrentDate<=@ENDDATE),0)
+[Received Amount],
+
+		
+		isnull((select sum(a.[Received AMount]) from udv_processofPSD a with(nolock) where a.iTransId=aa.iTransId and ApprovalStatus=114 and PaymentClear=2  and a.CurrentDate>=
+dbo.fCore_DateToInt(concat(datepart(year,dbo.fCore_IntToDate(@STARTDATE)),'-',datepart(month,dbo.fCore_IntToDate(@STARTDATE)),'-01'))  and a.CurrentDate<=@ENDDATE),0)
+[Realized Amount],
+
+(((isnull((select sum(Amount) from udv_processofPSD with(nolock) where iTransId=aa.iTransId and DueDate<dbo.fCore_DateToInt(concat(datepart(year,dbo.fCore_IntToDate(@STARTDATE)),'-',datepart(month,dbo.fCore_IntToDate(@STARTDATE)),'-01'))),0))
+	-
+	(isnull((select sum([Received AMount]) from udv_processofPSD with(nolock)  where iTransId=aa.iTransId and ApprovalStatus=114 and PaymentClear=2 and
+		CurrentDate<dbo.fCore_DateToInt(concat(datepart(year,dbo.fCore_IntToDate(@STARTDATE)),'-',datepart(month,dbo.fCore_IntToDate(@STARTDATE)),'-01'))),0))) 
+		+
+		(ISNULL((select sum(a.Amount) from udv_processofPSD a with(nolock) where a.DueDate>=dbo.fCore_DateToInt(concat(datepart(year,dbo.fCore_IntToDate(@STARTDATE)),'-',datepart(month,dbo.fCore_IntToDate(@STARTDATE)),'-01')) and a.DueDate<=@ENDDATE
+and iTransId=aa.iTransId),0)))
+-
+(isnull((select sum(a.[Received AMount]) from udv_processofPSD a with(nolock) where a.iTransId=aa.iTransId and ApprovalStatus=114 and PaymentClear=2  and a.CurrentDate>=
+dbo.fCore_DateToInt(concat(datepart(year,dbo.fCore_IntToDate(@STARTDATE)),'-',datepart(month,dbo.fCore_IntToDate(@STARTDATE)),'-01'))  and a.CurrentDate<=@ENDDATE),0))
+[Current Dues],
+
+(isnull((select sum([Received AMount]) from udv_processofPSD with(nolock)  where iTransId=aa.iTransId and ApprovalStatus=114 and PaymentClear=2 and
+		CurrentDate<dbo.fCore_DateToInt(concat(datepart(year,dbo.fCore_IntToDate(@STARTDATE)),'-',datepart(month,dbo.fCore_IntToDate(@STARTDATE)),'-01'))),0))
++
+(isnull((select sum(a.[Received AMount]) from udv_processofPSD a with(nolock) where a.iTransId=aa.iTransId and ApprovalStatus=114 and PaymentClear=2  and a.CurrentDate>=
+dbo.fCore_DateToInt(concat(datepart(year,dbo.fCore_IntToDate(@STARTDATE)),'-',datepart(month,dbo.fCore_IntToDate(@STARTDATE)),'-01'))  and a.CurrentDate<=@ENDDATE),0))
+[Total Collection UpToDate],
+
+
+([Selling Price])
+-
+((isnull((select sum([Received AMount]) from udv_processofPSD with(nolock)  where iTransId=aa.iTransId and ApprovalStatus=114 and PaymentClear=2 and
+		CurrentDate<dbo.fCore_DateToInt(concat(datepart(year,dbo.fCore_IntToDate(@STARTDATE)),'-',datepart(month,dbo.fCore_IntToDate(@STARTDATE)),'-01'))),0))
++
+(isnull((select sum(a.[Received AMount]) from udv_processofPSD a with(nolock) where a.iTransId=aa.iTransId and a.ApprovalStatus=114 and a.PaymentClear=2  and a.CurrentDate>=
+dbo.fCore_DateToInt(concat(datepart(year,dbo.fCore_IntToDate(@STARTDATE)),'-',datepart(month,dbo.fCore_IntToDate(@STARTDATE)),'-01'))  and a.CurrentDate<=@ENDDATE),0)))
+[Balance],
+
+isnull((select sum(a.Amount) from udv_processofPSD a with(nolock) where 
+ a.DueDate>=dbo.DateToInt(EOMONTH(DateAdd(month,1,dbo.IntToDate(@ENDDATE))))
+and iTransId=aa.iTransId),0)
+[Schedule Next Month],
+
+case when 
+	isnull((select sum(a.Amount) from  udv_processofPSD a with(nolock) where iTransId=aa.iTransId and a.DueDate>=dbo.DateToInt(DateAdd(month,1,dbo.IntToDate(@STARTDATE))) and 
+	a.DueDate>=dbo.DateToInt(DateAdd(month,1,dbo.IntToDate(@ENDDATE))) ),0) =0 then 0 else 
+
+	isnull((select sum(a.Amount) from  udv_processofPSD a with(nolock) where iTransId=aa.iTransId and a.ApprovalStatus=114 and a.PaymentClear=2 and a.DueDate>=dbo.DateToInt(DateAdd(month,1,dbo.IntToDate(@STARTDATE))) and 
+	a.DueDate>=dbo.DateToInt(DateAdd(month,1,dbo.IntToDate(@ENDDATE))) ),0)
+		-
+		isnull((select sum([Received AMount]) from udv_processofPSD with(nolock)  where iTransId=aa.iTransId and 
+		ApprovalStatus=114 and PaymentClear=2 and
+		CurrentDate>=dbo.DateToInt(DateAdd(month,1,dbo.IntToDate(@STARTDATE)))  and 
+		CurrentDate<=dbo.DateToInt(DateAdd(month,1,dbo.IntToDate(@ENDDATE)))),0) end [Next Due Amount Schedule],
+
+
+		
+((((isnull((select sum(Amount) from udv_processofPSD with(nolock) where iTransId=aa.iTransId and DueDate<dbo.fCore_DateToInt(concat(datepart(year,dbo.fCore_IntToDate(@STARTDATE)),'-',datepart(month,dbo.fCore_IntToDate(@STARTDATE)),'-01'))),0))
+	-
+	(isnull((select sum([Received AMount]) from udv_processofPSD with(nolock)  where iTransId=aa.iTransId and ApprovalStatus=114 and PaymentClear=2 and
+		CurrentDate<dbo.fCore_DateToInt(concat(datepart(year,dbo.fCore_IntToDate(@STARTDATE)),'-',datepart(month,dbo.fCore_IntToDate(@STARTDATE)),'-01'))),0))) 
+		+
+		(ISNULL((select sum(a.Amount) from udv_processofPSD a with(nolock) where a.DueDate>=dbo.fCore_DateToInt(concat(datepart(year,dbo.fCore_IntToDate(@STARTDATE)),'-',datepart(month,dbo.fCore_IntToDate(@STARTDATE)),'-01')) and a.DueDate<=@ENDDATE
+and iTransId=aa.iTransId),0)))
+-
+(isnull((select sum(a.[Received AMount]) from udv_processofPSD a with(nolock) where a.iTransId=aa.iTransId and ApprovalStatus=114 and PaymentClear=2  and a.CurrentDate>=
+dbo.fCore_DateToInt(concat(datepart(year,dbo.fCore_IntToDate(@STARTDATE)),'-',datepart(month,dbo.fCore_IntToDate(@STARTDATE)),'-01'))  and a.CurrentDate<=@ENDDATE),0)))
++
+(case when 
+	isnull((select sum(a.Amount) from  udv_processofPSD a with(nolock) where iTransId=aa.iTransId and a.DueDate>=dbo.DateToInt(DateAdd(month,1,dbo.IntToDate(@STARTDATE))) and 
+	a.DueDate>=dbo.DateToInt(DateAdd(month,1,dbo.IntToDate(@ENDDATE))) ),0) =0 then 0 else 
+
+	isnull((select sum(a.Amount) from  udv_processofPSD a with(nolock) where iTransId=aa.iTransId and a.ApprovalStatus=114 and a.PaymentClear=2 and a.DueDate>=dbo.DateToInt(DateAdd(month,1,dbo.IntToDate(@STARTDATE))) and 
+	a.DueDate>=dbo.DateToInt(DateAdd(month,1,dbo.IntToDate(@ENDDATE))) ),0)
+		-
+		isnull((select sum([Received AMount]) from udv_processofPSD with(nolock) where iTransId=aa.iTransId and 
+		CurrentDate>=dbo.DateToInt(DateAdd(month,1,dbo.IntToDate(@STARTDATE)))  and 
+		CurrentDate<=dbo.DateToInt(DateAdd(month,1,dbo.IntToDate(@ENDDATE)))),0) end)
+		[Total Target Next Month],
+
+(select top 1 convert(varchar(10),dbo.IntToDate(DueDate),105) from udv_processofPSD with(nolock) where iTransId=aa.iTransId and 
+DueDate>=dbo.DateToInt(DateAdd(month,1,dbo.IntToDate(@ENDDATE)))
+)[Next Schedule Date],
+
+
+(
+			select Distinct 
+		case when iStatus=1 then 'Active'
+		when iStatus=2 then 'Cancel' 
+		when iStatus=3 then 'Transfer' end from udv_processofPSD with(nolock) where [Booking No.]=aa.[Booking No.] and iTransId=aa.iTransId) [Booking Status],
+		
+		(select max(Narration) from udv_processofPSD with(nolock) where  iTransId=aa.iTransId) [Remarks],
+		
+		(select distinct sName from vCrm_Users s with(nolock) inner join udv_processofPSD u with(nolock) on s.iMasterId=u.iAssignedTo where u.iTransId=aa.iTransId) [Users],
+		
+		(select E.sName from vCore_PSDProcess P with(nolock)
+		left join vCore_Employees E with(nolock) on E.iMasterId = P.DealingPerson
+		where P.iMasterId = aa.PSDProcess) [Dealing Person]
+from UDV_PSDCollectionReport aa with(nolock)
+
+where 
+ (( 0 in (@Property) and aa.iProperty  = aa.iProperty ) or (0 not in (@Property) and aa.iProperty   in ( @Property )))
+and (( 0 in (@Customer) and aa.iCustomerId  = aa.iCustomerId) or (0 not in (@Customer) and aa.iCustomerId  in ( @Customer )))
+and  (( 0 in (@PMS) and aa.iPMS  = aa.iPMS) or (0 not in (@PMS) and aa.iPMS  in ( @PMS )))
+and [Booking No.] = 'Bk/2205260'
+
+group by Branch,
+		[Property Type],
+		Property,
+		Customer,
+		[PMS Name],
+		[Unit Size],
+		aa.[Booking No.],
+		[SFT Rate DP],
+		[Selling Price],
+		aa.iTransId,
+		aa.iProperty,
+		aa.iCustomerId,
+		aa.iPMS ,
+		aa.PSDProcess
+
+
+
+
+
