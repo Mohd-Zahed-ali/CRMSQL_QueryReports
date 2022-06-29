@@ -1,74 +1,35 @@
-Create proc [dbo].[udp_SQReport](@iTransId int)
+alter proc [dbo].[udp_SQReport](@iTransId int)
 as
-begin
-select  JE.iMasterId,
-		convert(varchar(10),dbo.fCore_IntToDateTime(JE.PromisedDateTime),103) [Date],
-		A.sName[Customer],
-		C.sName[Brought by Contact],
-		JE.PhoneNo,
-		JE.Email[E-Mail],
-		VB.sName [Vehicle Make],
-		CA.sName [Registration Number],
-		ET.sName [Engine Type],
-		JE.ChassisNo [Vin No],
-		JE.Currentileage [Mileage in WorkShop],
-		JE.sName [Job Estimation No.],
-		JR.sName [Job Req No.],
-		U.sName [Service Advisor],
-		U1.sName [Team Leader]
-		--Concern.[Prod Type] [Concern ProdType],
-		--Concern.PartName [Concern Particular],
-		--Concern.Quantity [Concern Quantity],
-		--Concern.Rate [Concern Rate],
-		--Concern.Gross [Concern Gross],
-		--Concern.Total [Concern Total],
-		----Concern.LabourTotal [Concern Labour Total],
-		--Additional.[Prod Type] [Additional ProdType],
-		--Additional.PartName [Additional PartName],
-		--Additional.Gross [Addditional Gross],
-		--Additional.Quantity [Additional Quantity],
-		--Additional.Rate [Additional Rate],
-		--Additional.Total  [Additional Total],
-		----Additional.[Parts Total] [Additional Parts Total],
-		----Additional.LabourTotal 
-		--Safety.[Prod Type] [Safety Prod Type],
-		--Safety.PartName [Safety particular],
-		--Safety.Gross [Safety Gross],
-		--Safety.Quantity [Safety Quantity],
-		--Safety.Rate [Safety Rate],
-		--Safety.Total [Safety Total]
-			from vuCore_Estimation_General_Details JE with(nolock) 
-				--left join   (select JE.ProductListCategory,'Parts' as[Prod Type],JE.iMasterId,JE.PartName,JE.Quantity,JE.PriceWithMargin[Rate],JE.GrossAmountP[Gross],JE.Gross[Total] from vuCore_Estimation_General_Details JE with(nolock)
-				--			 where JE.iMasterId=27778 and JE.ProductListCategory=1
-				--			union
-				--			select SD.ServiceCategory[ServiceCategory],'Labour',SD.iMasterId[iMasterId],S.sName[sName],SD.Duration,SD.Rate,SD.GrossAmountS,SD.GrossAmount from vuCore_Estimation_ServiceList_Details SD 
-				--			with(nolock) left join
-				--			 vCrm_Services S with(nolock) on S.iMasterId=SD.Service where SD.iMasterId=27778 and SD.ServiceCategory=1
-				--			 )Concern on Concern.iMasterId=JE.iMasterId
-				--left join (select JE.ProductListCategory,'Parts' as[Prod Type],JE.iMasterId,JE.PartName,JE.Quantity,JE.PriceWithMargin[Rate],JE.GrossAmountP[Gross],JE.Gross[Total] from vuCore_Estimation_General_Details JE with(nolock)
-				--			 where JE.iMasterId=27778 and JE.ProductListCategory=2
-				--			union
-				--			select SD.ServiceCategory[ServiceCategory],'Labour',SD.iMasterId[iMasterId],S.sName[sName],SD.Duration,SD.Rate,SD.GrossAmountS,SD.GrossAmount from vuCore_Estimation_ServiceList_Details SD 
-				--			with(nolock) left join
-				--			 vCrm_Services S with(nolock) on S.iMasterId=SD.Service where SD.iMasterId=27778 and SD.ServiceCategory=2
-				--			 )Additional on Additional.iMasterId=JE.iMasterId
-				--left join (select JE.ProductListCategory,'Parts' as[Prod Type],JE.iMasterId,JE.PartName,JE.Quantity,JE.PriceWithMargin[Rate],JE.GrossAmountP[Gross],JE.Gross[Total] from vuCore_Estimation_General_Details JE with(nolock)
-				--			 where JE.iMasterId=27778 and JE.ProductListCategory=4
-				--			union
-				--			select SD.ServiceCategory[ServiceCategory],'Labour',SD.iMasterId[iMasterId],S.sName[sName],SD.Duration,SD.Rate,SD.GrossAmountS,SD.GrossAmount from vuCore_Estimation_ServiceList_Details SD 
-				--			with(nolock) left join
-				--			 vCrm_Services S with(nolock) on S.iMasterId=SD.Service where SD.iMasterId=27778 and SD.ServiceCategory=4
-				--			 )Safety on Safety.iMasterId=JE.iMasterId
-				left join vCore_Account A with(nolock) on A.iMasterId=JE.Customer
-				left join vCrm_Contacts C with(nolock) on C.iMasterId=JE.Contact
-				left join vCore_VehicleBrand VB with(nolock) on VB.iMasterId=JE.VehicleMake
-				left join vCrm_CustAssets CA with(nolock) on CA.iTransId=JE.PlateNo
-				left join vCore_EngineType ET with(nolock) on ET.iMasterId=JE.EngineType
-				left join vCore_JobRequest JR with(nolock) on JR.iMasterId=JE.JobReqNo
-				left join vCrm_Users U with(nolock) on U.iMasterId=JE.ServiceAdvisor
-				left join vCrm_Users U1 with(nolock) on U1.iMasterId=JE.TeamLeader
-					where JE.iMasterId=27778
-end
+	begin
+	select  JE.iMasterId,
+			convert(varchar(10),dbo.fCore_IntToDateTime(JE.PromisedDateTime),103) [Date],
+			A.sName[Customer],
+			C.sName[Brought by Contact],
+			JE.PhoneNo,
+			JE.Email[E-Mail],
+			VB.sName [Vehicle Make],
+			CA.sName [Registration Number],
+			ET.sName [Engine Type],
+			JE.ChassisNo [Vin No],
+			JE.Currentileage [Mileage in WorkShop],
+			JE.sName [Job Estimation No.],
+			JR.sName [Job Req No.],
+			U.sName [Service Advisor],
+			U1.sName [Team Leader],
+			JE.CustomerRemarks [CustomerRemarksNote],
+			Us.sName [Prepared by]
+				from vuCore_Estimation_General_Details JE with(nolock) 
+					left join vCrm_Users Us with(nolock) on JE.iAssignedTo=Us.iMasterId
+					left join vCore_Account A with(nolock) on A.iMasterId=JE.Customer
+					left join vCrm_Contacts C with(nolock) on C.iMasterId=JE.Contact
+					left join vCore_VehicleBrand VB with(nolock) on VB.iMasterId=JE.VehicleMake
+					left join vCrm_CustAssets CA with(nolock) on CA.iTransId=JE.PlateNo
+					left join vCore_EngineType ET with(nolock) on ET.iMasterId=JE.EngineType
+					left join vCore_JobRequest JR with(nolock) on JR.iMasterId=JE.JobReqNo
+					left join vCrm_Users U with(nolock) on U.iMasterId=JE.ServiceAdvisor
+					left join vCrm_Users U1 with(nolock) on U1.iMasterId=JE.TeamLeader
+						where JE.iMasterId=@iTransId
+	end
 --------------------------------Sub report ----------------
 Create PRoc [dbo].[udp_Total](@iTransId int)
 as
