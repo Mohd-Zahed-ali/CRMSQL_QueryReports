@@ -1,0 +1,14 @@
+select b.sName [Module],
+        dbo.fCrm_GetMasterName(iModuleId,iTransId,0) [DocName],
+        c.sName [Approval User],
+		case when a.iStatus=114 then 'Approved'
+		 when a.iStatus=115 then 'Pending'
+		 when a.iStatus=117 then 'Rejected' end
+		[Status],
+        a.sDescription [Approval Remarks],
+        dbo.fCore_IntToDateTime(a.iApprovalDate) [Approval Date]
+from cCrm_Auth_Approvals a with(nolock)
+inner join vCrm_ModuleTypes b with(nolock) on a.iModuleId=b.iTypeId
+inner join vCrm_Users c with(nolock) on c.iMasterId=a.iUserId
+where a.iApprovalId>0 and dbo.fCrm_GetMasterName(iModuleId,iTransId,0)<>''
+and a.iApprovalDate between @STARTDATETIME AND @ENDDATETIME
