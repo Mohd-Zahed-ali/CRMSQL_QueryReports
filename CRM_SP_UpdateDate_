@@ -1,0 +1,28 @@
+USE [Focus8020]
+GO
+/****** Object:  StoredProcedure [dbo].[UDP_GETUpdateDate]    Script Date: 01-07-2022 15:14:25 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+ALTER Proc [dbo].[UDP_GETUpdateDate](@iTransId bigint,@iUserId int)
+as 
+begin
+
+declare @Date bigint = 0
+declare @RelatedTo int = 0
+declare @transid bigint =0
+select @transid = dbo.fCrm_IntToAPITransId(@iTransId,0)
+
+
+select @RelatedTo=iRelatedTo ,@Date=iCreatedDate
+from vCrm_AllActivities with(nolock) where iMasterId=@transid 
+and iCreatedDate = 
+(select  max(iCreatedDate) from vCrm_AllActivities with(nolock) where iMasterId=@transid)
+
+update vaCrm_Leads set LastActivityDate1=@Date where iMemberId = @RelatedTo
+end
+
+
+
