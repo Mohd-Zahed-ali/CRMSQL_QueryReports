@@ -18,14 +18,28 @@ SELECT
   case when ISNULL(TillMonthPayment, 0)=ISNULL(TillMonthPayment1, 0) then
   TillMonthPayment
   else
-  ISNULL(TillMonthPayment, 0) + ISNULL(TillMonthPayment1, 0) end [Rental payments received],
+  ISNULL(TillMonthPayment, 0) + ISNULL(TillMonthPayment1, 0) + dbo.UDF_GetAmount(iTransId) end [Rental payments received],
   SecurityDepositPayment 
   [Security deposit cleared],
   AccuriedRent [Accrued rental income],
   RentalIncomeForTheMonth,
-  RentalNetTotal - (ISNULL(TillMonthPayment, 0) + ISNULL(TillMonthPayment1, 0)) [RentReceivables],
+  RentalNetTotal 
+  - 
+  case
+  when
+  ISNULL(TillMonthPayment, 0) = ISNULL(TillMonthPayment1, 0)
+  then
+  ISNULL(TillMonthPayment, 0)
+  else
+  (ISNULL(TillMonthPayment, 0) + ISNULL(TillMonthPayment1, 0)) end [RentReceivables],
+
   CASE
-    WHEN AccuriedRent - (ISNULL(TillMonthPayment, 0) + ISNULL(TillMonthPayment1, 0)) <= 0 THEN (ISNULL(TillMonthPayment, 0) + ISNULL(TillMonthPayment1, 0)) - AccuriedRent
+    WHEN TillMonthPayment<>TillMonthPayment1 and AccuriedRent
+	-
+	(ISNULL(TillMonthPayment, 0) + ISNULL(TillMonthPayment1, 0)) <= 0 THEN (ISNULL(TillMonthPayment, 0) + ISNULL(TillMonthPayment1, 0)) - AccuriedRent
+	when TillMonthPayment=TillMonthPayment1 and AccuriedRent
+	-
+	ISNULL(TillMonthPayment, 0) <= 0 THEN ISNULL(TillMonthPayment, 0) - AccuriedRent
     ELSE 0
   END [AdvanceRent],
   [BouncedChequeVal],
@@ -34,7 +48,7 @@ SELECT
   [CurrentMonthPayment1],
   [Termination Date],
   [Contracted Days],
-  ISNULL(RentalNetTotal, 0) / ISNULL([Contracted Days], 0) [Daily Rent]
+  ISNULL(RentalNetTotal, 0) / nullif([Contracted Days], 0) [Daily Rent]
 FROM (SELECT
   a.iTransId,
   c.sName Contact,
@@ -85,42 +99,48 @@ FROM (SELECT
   [SecurityDepositPayment],
   CASE
   	WHEN ISNULL(CT.iTerminationDate,0)>0 		
-		THEN (dbo.fCrm_DATEDIFF(1, a.iLeaseStartDate, CT.iTerminationDate)+1)*(RentalNetTotal / a.ContractedDays)
+		THEN (dbo.fCrm_DATEDIFF(1, a.iLeaseStartDate, CT.iTerminationDate)+1)*(RentalNetTotal / nullif(a.ContractedDays,0))
     WHEN (dbo.fCrm_DATEDIFF(1, a.iLeaseStartDate, @ENDDATE) > 0) AND
-      (dbo.fCrm_DATEDIFF(1, a.iLeaseEndDate, @ENDDATE) > 0) THEN ((dbo.fCrm_DATEDIFF(1, a.iLeaseStartDate, @ENDDATE) + 1) - (dbo.fCrm_DATEDIFF(1, a.iLeaseEndDate, @ENDDATE))) * (RentalNetTotal / a.ContractedDays)
+      (dbo.fCrm_DATEDIFF(1, a.iLeaseEndDate, @ENDDATE) > 0) THEN ((dbo.fCrm_DATEDIFF(1, a.iLeaseStartDate, @ENDDATE) + 1) - (dbo.fCrm_DATEDIFF(1, a.iLeaseEndDate, @ENDDATE))) * (RentalNetTotal / nullif(a.ContractedDays,0))
     WHEN (dbo.fCrm_DATEDIFF(1, a.iLeaseStartDate, @ENDDATE) > 0) AND
-      (dbo.fCrm_DATEDIFF(1, a.iLeaseEndDate, @ENDDATE) <= 0) THEN (dbo.fCrm_DATEDIFF(1, a.iLeaseStartDate, @ENDDATE) + 1) * (RentalNetTotal / a.ContractedDays)
-    WHEN (dbo.fCrm_DATEDIFF(1, a.iLeaseStartDate, @ENDDATE) = 0) THEN (dbo.fCrm_DATEDIFF(1, a.iLeaseStartDate, @ENDDATE) + 1) * (RentalNetTotal / a.ContractedDays)
+      (dbo.fCrm_DATEDIFF(1, a.iLeaseEndDate, @ENDDATE) <= 0) THEN (dbo.fCrm_DATEDIFF(1, a.iLeaseStartDate, @ENDDATE) + 1) * (RentalNetTotal / nullif(a.ContractedDays,0))
+    WHEN (dbo.fCrm_DATEDIFF(1, a.iLeaseStartDate, @ENDDATE) = 0) THEN (dbo.fCrm_DATEDIFF(1, a.iLeaseStartDate, @ENDDATE) + 1) * (RentalNetTotal /nullif(a.ContractedDays,0))
     ELSE 0
   END [AccuriedRent],
   CASE when ISNULL(CT.iTerminationDate,0)>0 and @STARTDATE >isnull(a.iLeaseStartDate,0) and @ENDDATE<ISNULL(CT.iTerminationDate,0)
-	then (dbo.fCrm_DATEDIFF(1, @STARTDATE, @ENDDATE) + 1)  * (RentalNetTotal / a.ContractedDays)
+	then isnull((dbo.fCrm_DATEDIFF(1, @STARTDATE, @ENDDATE) + 1)  * (RentalNetTotal / nullif(a.ContractedDays,0)),0)
 
 	when ISNULL(CT.iTerminationDate,0)>0 and @STARTDATE >=isnull(a.iLeaseStartDate,0) and @ENDDATE>=ISNULL(CT.iTerminationDate,0)
-	 then (dbo.fCrm_DATEDIFF(1, @STARTDATE, CT.iTerminationDate) + 1)  * (RentalNetTotal / a.ContractedDays)
+	 then isnull((dbo.fCrm_DATEDIFF(1, @STARTDATE, CT.iTerminationDate) + 1)  * (RentalNetTotal / nullif(a.ContractedDays,0)),0)
 
 	when ISNULL(CT.iTerminationDate,0)>0 and @STARTDATE < isnull(a.iLeaseStartDate,0) and @ENDDATE< ISNULL(CT.iTerminationDate,0)
-	 then (dbo.fCrm_DATEDIFF(1, isnull(a.iLeaseStartDate,0), @ENDDATE) + 1)  * (RentalNetTotal / a.ContractedDays)
+	 then isnull((dbo.fCrm_DATEDIFF(1, isnull(a.iLeaseStartDate,0), @ENDDATE) + 1)  * (RentalNetTotal / nullif(a.ContractedDays,0)),0)
 
 	when ISNULL(CT.iTerminationDate,0)>0 and @STARTDATE < isnull(a.iLeaseStartDate,0) and @ENDDATE>= ISNULL(CT.iTerminationDate,0)
-	 then (dbo.fCrm_DATEDIFF(1, isnull(a.iLeaseStartDate,0), CT.iTerminationDate) + 1)  * (RentalNetTotal / a.ContractedDays)
+	 then isnull((dbo.fCrm_DATEDIFF(1, isnull(a.iLeaseStartDate,0), CT.iTerminationDate) + 1)  * (RentalNetTotal / nullif(a.ContractedDays,0)),0)
     WHEN ISNULL(CT.iTerminationDate,0)=0 and @STARTDATE <= a.iLeaseStartDate AND 
-      @ENDDATE > a.iLeaseEndDate THEN (dbo.fCrm_DATEDIFF(1, a.iLeaseStartDate, a.iLeaseEndDate) + 1) * (RentalNetTotal / a.ContractedDays)
+      @ENDDATE > a.iLeaseEndDate
+	  THEN isnull((dbo.fCrm_DATEDIFF(1, a.iLeaseStartDate, a.iLeaseEndDate) + 1) * (RentalNetTotal / nullif(a.ContractedDays,0)),0)
     WHEN ISNULL(CT.iTerminationDate,0)=0 and @STARTDATE >= a.iLeaseStartDate AND
-      @ENDDATE < a.iLeaseEndDate THEN (dbo.fCrm_DATEDIFF(1, @STARTDATE, @ENDDATE) + 1) * (RentalNetTotal / a.ContractedDays)
+      @ENDDATE < a.iLeaseEndDate 
+	  THEN isnull((dbo.fCrm_DATEDIFF(1, @STARTDATE, @ENDDATE) + 1) * (RentalNetTotal / nullif(a.ContractedDays,0)),0)
     WHEN ISNULL(CT.iTerminationDate,0)=0 and @STARTDATE > a.iLeaseStartDate AND
-      @ENDDATE > a.iLeaseEndDate THEN (dbo.fCrm_DATEDIFF(1, @STARTDATE, a.iLeaseEndDate) + 1) * (RentalNetTotal / a.ContractedDays)
+      @ENDDATE > a.iLeaseEndDate
+	  THEN isnull((dbo.fCrm_DATEDIFF(1, @STARTDATE, a.iLeaseEndDate) + 1) * (RentalNetTotal / nullif(a.ContractedDays,0)),0)
     WHEN ISNULL(CT.iTerminationDate,0)=0 and @STARTDATE < a.iLeaseStartDate AND
-      @ENDDATE < a.iLeaseEndDate THEN (dbo.fCrm_DATEDIFF(1, a.iLeaseStartDate, @ENDDATE) + 1) * (RentalNetTotal / a.ContractedDays)
+      @ENDDATE < a.iLeaseEndDate
+	  THEN ISNULL((dbo.fCrm_DATEDIFF(1, a.iLeaseStartDate, @ENDDATE) + 1) * (RentalNetTotal / nullif(a.ContractedDays,0)),0)
     WHEN ISNULL(CT.iTerminationDate,0)=0 and @STARTDATE > a.iLeaseStartDate AND
-      @ENDDATE = a.iLeaseEndDate THEN (dbo.fCrm_DATEDIFF(1, @STARTDATE, @ENDDATE) + 1) * (RentalNetTotal / a.ContractedDays)
+      @ENDDATE = a.iLeaseEndDate 
+	  THEN ISNULL((dbo.fCrm_DATEDIFF(1, @STARTDATE, @ENDDATE) + 1) * (RentalNetTotal / nullif(a.ContractedDays,0)),0)
     WHEN ISNULL(CT.iTerminationDate,0)=0 and @STARTDATE < a.iLeaseStartDate AND
-      @ENDDATE = a.iLeaseEndDate THEN (dbo.fCrm_DATEDIFF(1, a.iLeaseStartDate, a.iLeaseEndDate) + 1) * (RentalNetTotal / a.ContractedDays)
+      @ENDDATE = a.iLeaseEndDate 
+	  THEN ISNULL((dbo.fCrm_DATEDIFF(1, a.iLeaseStartDate, a.iLeaseEndDate) + 1) * (RentalNetTotal / nullif(a.ContractedDays,0)),0)
     WHEN ISNULL(CT.iTerminationDate,0)=0 and @STARTDATE = a.iLeaseStartDate AND
-      @ENDDATE = a.iLeaseEndDate THEN (dbo.fCrm_DATEDIFF(1, a.iLeaseStartDate, a.iLeaseEndDate) + 1) * (RentalNetTotal / a.ContractedDays)
+      @ENDDATE = a.iLeaseEndDate 
+	  THEN ISNULL((dbo.fCrm_DATEDIFF(1, a.iLeaseStartDate, a.iLeaseEndDate) + 1) * (RentalNetTotal /nullif(a.ContractedDays,0)),0)
     ELSE 0
   END [RentalIncomeForTheMonth],
-  -- DATEPART(dd, (EOMONTH(dbo.fCore_IntToDate(@ENDDATE)))) * a.DailyRent [RentalIncomeForTheMonth],
   (SELECT
     SUM(ISNULL(Amount, 0)) [BouncedChequeVal]
   FROM mCore_PDCInformation PDC
@@ -149,7 +169,7 @@ LEFT JOIN mCore_Account acc WITH (NOLOCK)
   ON acc.iMasterId = a.Tenant
 LEFT JOIN vCrm_ContractTermination CT WITH (NOLOCK)
   ON a.iTransId = CT.LeaseContractNo
-WHERE a.iTransId > 0 and a.iTransId=1973
+WHERE a.iTransId > 0
 AND ((ISNULL(CT.LeaseContractNo, 0) = 0
 AND ((@ENDDATE BETWEEN a.iLeaseStartDate AND a.iLeaseEndDate)
 OR (@STARTDATE BETWEEN a.iLeaseStartDate AND a.iLeaseEndDate)
@@ -159,11 +179,7 @@ OR (ISNULL(CT.LeaseContractNo, 0) > 0
 AND ((@ENDDATE BETWEEN a.iLeaseStartDate AND CT.iTerminationDate)
 OR (@STARTDATE BETWEEN a.iLeaseStartDate AND CT.iTerminationDate)
 OR (CT.iTerminationDate BETWEEN @STARTDATE AND @ENDDATE))))
-/*AND ((@ENDDATE BETWEEN a.iLeaseStartDate AND a.iLeaseEndDate) or  (@STARTDATE BETWEEN a.iLeaseStartDate AND a.iLeaseEndDate) or
-(a.iLeaseStartDate BETWEEN @STARTDATE and @ENDDATE) or (a.iLeaseEndDate BETWEEN @STARTDATE and @ENDDATE))*/
 AND b.iMasterId = IIF(@Unit > 0, @Unit, b.iMasterId)
-/*AND b.Landlord=1624 */
 AND c.iMasterId = IIF(@Contact > 0, @Contact, c.iMasterId)
 AND PR.iMasterId = IIF(@Property > 0, @Property, PR.iMasterId)
-/*and a.iContractStatus=186*/
-/*AND a.sContractNumber='CONNBT1900073'*/) AA
+) AA
