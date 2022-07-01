@@ -1,0 +1,14 @@
+declare @FromTime int = 1310720 
+declare @ToTime int = 1376256
+declare @time Time
+declare @FromDate int =dbo.DateToInt('2022-01-01')
+declare @ToDate int =dbo.DateToInt('2022-01-02')
+
+select DateDiff(MINUTE,(CONVERT(DATETIME, CONVERT(CHAR(8), dbo.IntToDate(@FromDate), 112) 
+  + ' ' + CONVERT(CHAR(8), dbo.fcore_inttotime(@FromTime), 108))),(CONVERT(DATETIME, CONVERT(CHAR(8), dbo.IntToDate(@ToDate), 112) 
+  + ' ' + CONVERT(CHAR(8), dbo.fcore_inttotime(@ToTime), 108))))
+
+  select CONVERT(DATETIME, CONVERT(CHAR(8), dbo.IntToDate(@FromDate), 112) 
+  + ' ' + CONVERT(CHAR(8), dbo.fcore_inttotime(@FromTime), 108))
+  select (CONVERT(DATETIME, CONVERT(CHAR(8), dbo.IntToDate(@ToDate), 112) 
+  + ' ' + CONVERT(CHAR(8), dbo.fcore_inttotime(@ToTime), 108)))
