@@ -1,0 +1,106 @@
+USE [Focus8020]
+GO
+/****** Object:  StoredProcedure [dbo].[fPay_SLHOUR]    Script Date: 01-07-2022 11.21.41 AM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+ALTER PROC [dbo].[fPay_SLHOUR]
+  @xmlIn AS XML,
+  @XmlOut AS XML out
+AS
+  BEGIN
+    DECLARE @FromTime BIGINT
+    DECLARE @ToTime   BIGINT
+    DECLARE @result   INT,
+      @FromDate       BIGINT,
+      @Todate         BIGINT,
+	  @time           int,
+	  @emp			  int,
+	  @count          int
+
+    SET @FromTime=@xmlIn.value('(ArrayOfKeyValuePair/KeyValuePair/Value)[20]','bigint')
+	--1310720
+    SET @ToTime=@xmlIn.value('(ArrayOfKeyValuePair/KeyValuePair/Value)[24]','bigint')
+	--1376256
+    SET @FromDate=@xmlIn.value('(ArrayOfKeyValuePair/KeyValuePair/Value)[12]','bigint')
+    SET @Todate=@xmlIn.value('(ArrayOfKeyValuePair/KeyValuePair/Value)[16]','bigint')
+	SET @emp = @xmlIn.value('(ArrayOfKeyValuePair/KeyValuePair/Value)[10]','int')
+	SET @result=0
+
+	select @count=count(*) from tuPay_ShortLeave where xEmployeeName = @emp 
+	and (ShortLeaveDate between @FromDate and @ToDate 
+		or Enddateofshortleave between  @FromDate and @ToDate 
+		or @FromDate between ShortLeaveDate and Enddateofshortleave
+		or @ToDate between ShortLeaveDate and Enddateofshortleave)
+
+		if(@count>=1)
+		begin 
+		select @result=-1
+		end
+		if(@count=0)
+		begin
+
+				IF(@FromDate=@Todate)
+				BEGIN
+					SELECT @result=Datediff(minute,dbo.fcore_inttotime(@Fromtime),dbo.fcore_inttotime(@Totime))
+				END
+				ELSE IF(@FromDate<@Todate)
+				BEGIN
+				select @time=DateDiff(MINUTE,(CONVERT(DATETIME, CONVERT(CHAR(8), dbo.IntToDate(@FromDate), 112) 
+					  + ' ' + CONVERT(CHAR(8), dbo.fcore_inttotime(@FromTime), 108))),(CONVERT(DATETIME, CONVERT(CHAR(8), dbo.IntToDate(@Todate), 112) 
+					  + ' ' + CONVERT(CHAR(8), dbo.fcore_inttotime(@ToTime), 108))))
+							select @result=@time
+				END
+				ELSE IF (@FromDate>@Todate)
+				BEGIN
+				select @result=-1
+				END
+					ELSE 
+						BEGIN
+						select @result=0
+						END
+
+						if(@result>0)
+						begin
+							 SELECT @result=@result/60
+						end
+	end
+
+
+    IF(@result>=0
+    AND
+    @result<=1)
+    BEGIN
+      SET @result=1
+    END
+    ELSE
+    IF(@result>1
+    AND
+    @result<=2)
+    BEGIN
+      SET @result=2
+    END
+    ELSE
+    IF(@result>2
+    AND
+    @result<=3)
+    BEGIN
+      SET @result=3
+    END
+    ELSE
+    IF(@result>3
+    AND
+    @result<=4)
+    BEGIN
+      SET @result=4
+    END
+    ELSE
+    IF(@result>=4)
+    BEGIN
+      SET @result=5
+    END
+
+    SET @XmlOut=CONVERT(XML,'<ArrayOfKeyValuePair><KeyValuePair><Key>P50017E5099</Key><Value>'+CONVERT(VARCHAR,@result)+'</Value></KeyValuePair></ArrayOfKeyValuePair>')
+
+  END
