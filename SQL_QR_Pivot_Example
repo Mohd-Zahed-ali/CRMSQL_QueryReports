@@ -1,0 +1,13 @@
+declare @STARTDATE BIGINT = dbo.fCore_DateTimeToInt('2019-01-01 00:00:00')
+declare @ENDDATE BIGINT = dbo.fCore_DateTimeToInt('2022-12-31 23:59:00')
+
+select * from (select	
+		year(dbo.fCore_IntToDateTime(iCreatedDate)) [Year],
+		DATENAME(MONTH,dbo.fCore_IntToDateTime(iCreatedDate)) as Months,
+		isnull(sum(TotalNet),0) [net]
+			from vCrm_SalesOrder with(nolock)
+				where iCreatedDate between @STARTDATE and @ENDDATE
+					group by DATENAME(MONTH,dbo.fCore_IntToDateTime(iCreatedDate)),
+					year(dbo.fCore_IntToDateTime(iCreatedDate))) test 
+					pivot (sum(net) for Months in (January, February, March, April,May,June,July,August,September,October,November,December))
+					as p
