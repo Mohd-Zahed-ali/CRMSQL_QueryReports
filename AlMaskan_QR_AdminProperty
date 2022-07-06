@@ -153,6 +153,63 @@ select
 						Ag.iMasterId,
 						TP.iMasterId,
 						L.Agent
+
+-----------------------------------------------------for overall repoirt
+select 
+		TP.sName [Property Type],
+		P.sName [Property],
+		L.sName [Community],
+		(select count(sName) from vCrm_PMSUnits with(nolock) where iPropertyId=P.iMasterId and (( 0 in (@UnitType)) or (0 not in (@UnitType) and UnitType in (@UnitType))))[Unit Type],
+		(select count(UnitSubType) from vCrm_PMSUnits with(nolock) where iPropertyId=P.iMasterId and (( 0 in (@UnitSubType)) or (0 not in (@UnitSubType) and UnitSubType in (@UnitSubType)))) [Count of Unit Sub Type],
+		count(P.NoofUnits) [No of Units],
+		isnull((select Sum(fPrice) from vCrm_PMSUnits with(nolock) where iPropertyId=P.iMasterId),0)[Price ( Annual Rent/Sales)],
+		(select Count(*) from vCrm_Leads L with(nolock) inner join vCrm_Property PP with(nolock) on L.Property=PP.iMasterId and PP.iMasterId>0 where PP.iMasterId=P.iMasterId and P.TypeofProperty=TP.iMasterId)
+		[Leads Count],
+		(select count(L.LeadStage) from vCrm_Leads L with(nolock) inner join vCrm_Property PP with(nolock) on L.Property=PP.iMasterId and PP.iMasterId>0 where PP.iMasterId=P.iMasterId and PP.TypeofProperty=TP.iMasterId and L.LeadStage in (34) )
+		[Qualified],
+		(select count(L.LeadStage) from vCrm_Leads L with(nolock) inner join vCrm_Property PP with(nolock) on L.Property=PP.iMasterId and PP.iMasterId>0 where PP.iMasterId=P.iMasterId and PP.TypeofProperty=TP.iMasterId and L.LeadStage in (44) )
+		[Deal],
+		(select count(PMS.iPropertyId) from vCrm_PMSUnits PMS inner join 
+				(select distinct P.iMasterId from vCrm_Leads L with(nolock) inner join vCrm_Property PP with(nolock) on L.Property=PP.iMasterId and PP.iMasterId>0 where PP.iMasterId=P.iMasterId and PP.TypeofProperty=TP.iMasterId ) LP on PMS.iPropertyId=LP.iMasterId and PMS.iUnitStatus=162)
+		[Vacant],
+		(select count(PMS.iPropertyId) from vCrm_PMSUnits PMS inner join 
+				(select distinct P.iMasterId from vCrm_Leads L with(nolock) inner join vCrm_Property PP with(nolock) on L.Property=PP.iMasterId and PP.iMasterId>0 where PP.iMasterId=P.iMasterId and PP.TypeofProperty=TP.iMasterId ) LP on PMS.iPropertyId=LP.iMasterId and PMS.iUnitStatus=163)
+		[Occupied],
+		(select count(PMS.iPropertyId) from vCrm_PMSUnits PMS inner join 
+				(select distinct P.iMasterId from vCrm_Leads L with(nolock) inner join vCrm_Property PP with(nolock) on L.Property=PP.iMasterId and PP.iMasterId>0 where PP.iMasterId=P.iMasterId and PP.TypeofProperty=TP.iMasterId ) LP on PMS.iPropertyId=LP.iMasterId and PMS.iUnitStatus=164)
+		[Under Offer],
+		(select count(PMS.iPropertyId) from vCrm_PMSUnits PMS inner join 
+				(select distinct P.iMasterId from vCrm_Leads L with(nolock) inner join vCrm_Property PP with(nolock) on L.Property=PP.iMasterId and PP.iMasterId>0 where PP.iMasterId=P.iMasterId and PP.TypeofProperty=TP.iMasterId ) LP on PMS.iPropertyId=LP.iMasterId and PMS.iUnitStatus=165)
+		[Renovation],
+		(select count(PMS.iPropertyId) from vCrm_PMSUnits PMS inner join 
+				(select distinct P.iMasterId from vCrm_Leads L with(nolock) inner join vCrm_Property PP with(nolock) on L.Property=PP.iMasterId and PP.iMasterId>0 where PP.iMasterId=P.iMasterId and PP.TypeofProperty=TP.iMasterId ) LP on PMS.iPropertyId=LP.iMasterId and PMS.iUnitStatus=166)
+		Booked,
+		(select count(PMS.iPropertyId) from vCrm_PMSUnits PMS inner join 
+				(select distinct P.iMasterId from vCrm_Leads L with(nolock) inner join vCrm_Property PP with(nolock) on L.Property=PP.iMasterId and PP.iMasterId>0 where PP.iMasterId=P.iMasterId and PP.TypeofProperty=TP.iMasterId ) LP on PMS.iPropertyId=LP.iMasterId and PMS.iUnitStatus=189)
+		[Do not change ( Continue existing)],
+		(select count(PMS.iPropertyId) from vCrm_PMSUnits PMS inner join 
+				(select distinct P.iMasterId from vCrm_Leads L with(nolock) inner join vCrm_Property PP with(nolock) on L.Property=PP.iMasterId and PP.iMasterId>0 where PP.iMasterId=P.iMasterId and PP.TypeofProperty=TP.iMasterId ) LP on PMS.iPropertyId=LP.iMasterId and PMS.iUnitStatus=20003)
+		[Going to Vacate],
+		(select count(PMS.iPropertyId) from vCrm_PMSUnits PMS inner join 
+				(select distinct P.iMasterId from vCrm_Leads L with(nolock) inner join vCrm_Property PP with(nolock) on L.Property=PP.iMasterId and PP.iMasterId>0 where PP.iMasterId=P.iMasterId and PP.TypeofProperty=TP.iMasterId ) LP on PMS.iPropertyId=LP.iMasterId and PMS.iUnitStatus=20010)
+		Reserved,
+		(select count(PMS.iPropertyId) from vCrm_PMSUnits PMS inner join 
+				(select distinct P.iMasterId from vCrm_Leads L with(nolock) inner join vCrm_Property PP with(nolock) on L.Property=PP.iMasterId and PP.iMasterId>0 where PP.iMasterId=P.iMasterId and PP.TypeofProperty=TP.iMasterId ) LP on PMS.iPropertyId=LP.iMasterId and PMS.iUnitStatus=20013)
+		[Sold Out],
+		(select count(PMS.iPropertyId) from vCrm_PMSUnits PMS inner join 
+				(select distinct P.iMasterId from vCrm_Leads L with(nolock) inner join vCrm_Property PP with(nolock) on L.Property=PP.iMasterId and PP.iMasterId>0 where PP.iMasterId=P.iMasterId and PP.TypeofProperty=TP.iMasterId ) LP on PMS.iPropertyId=LP.iMasterId and PMS.iUnitStatus=0)
+		[NULL]
+			from vCrm_Property P with(nolock) Inner join vCore_TypeofProperty TP with(nolock) on P.TypeofProperty=TP.iMasterId
+				left join vCore_Community L with(nolock) on P.Community=L.iMasterId
+			
+				where (( 0 in (@PropertyType)) or (0 not in (@PropertyType) and TP.iMasterId  in (@PropertyType))) and (( 0 in (@Property)) or (0 not in (@Property) and P.iMasterId  in (@Property)))
+				and TP.iMasterId>0
+				group by TP.sName,
+				P.sName,
+				L.sName,
+				P.iMasterId,
+				TP.iMasterId,
+				P.TypeofProperty
 						
 
 						
