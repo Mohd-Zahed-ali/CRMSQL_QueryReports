@@ -72,3 +72,87 @@ select
 						TP.iMasterId,
 						L.Agent
 						
+-------------------------------------------------new query
+declare @PropertyType int = 0
+declare @Property int = 0
+declare @Agent int = 13
+declare @unittype int = 0
+declare @unitsubtype int = 0
+
+select 
+		Ag.sName[Agent Name],
+		TP.sName [Type of Property],
+		P.sName [Property Name],
+		C.sName [Community],
+		(select count(*) from vCrm_PMSUnits PMS with(nolock) where PMS.iPropertyId=P.iMasterId and iAssignedTo=U.iMasterId and (( 0 in (@unittype)) or (0 not in (@unittype) and PMS.UnitType in (@unittype))))[Unit Type],
+		
+		(select count(*) from vCrm_PMSUnits with(nolock) where iPropertyId=P.iMasterId and UnitSubType>0 and iAssignedTo=U.iMasterId and (( 0 in (@unitsubtype)) or (0 not in (@unitsubtype) and UnitSubType in (@unitsubtype)))) [Count of Unit Sub Type],
+		count(P.NoofUnits) [No of Units],
+		isnull((select Sum(fPrice) from vCrm_PMSUnits with(nolock) where iPropertyId=P.iMasterId and iAssignedTo=U.iMasterId),0)[Price ( Annual Rent/Sales)],
+		count(L.Agent)[Leads Count],
+		(select count(Ld.LeadStage) from vCrm_Leads Ld with(nolock) where Ld.Property=P.iMasterId and Ld.Agent=Ag.iMasterId and  Ld.LeadStage in (34))[Qualified],
+		(select count(Ld.LeadStage) from vCrm_Leads Ld with(nolock) where Ld.Property=P.iMasterId and Ld.Agent=Ag.iMasterId and  Ld.LeadStage in (44))[Deal],
+		(select count(*) from vCrm_PMSUnits PMS with(nolock)
+		inner join vCrm_Property PP with(nolock) on PP.iMasterId = PMS.iPropertyId
+		where PP.iMasterId=P.iMasterId and PP.TypeofProperty=TP.iMasterId and PMS.iAssignedTo=U.iMasterId and PMS.iUnitStatus=162)
+		[Vacant],
+		(select count(*) from vCrm_PMSUnits PMS with(nolock)
+		inner join vCrm_Property PP with(nolock) on PP.iMasterId = PMS.iPropertyId
+		where PP.iMasterId=P.iMasterId and PP.TypeofProperty=TP.iMasterId and PMS.iAssignedTo=U.iMasterId and PMS.iUnitStatus=163)
+		[Occupied],
+		(select count(*) from vCrm_PMSUnits PMS with(nolock)
+		inner join vCrm_Property PP with(nolock) on PP.iMasterId = PMS.iPropertyId
+		where PP.iMasterId=P.iMasterId and PP.TypeofProperty=TP.iMasterId and PMS.iAssignedTo=U.iMasterId and PMS.iUnitStatus=164)
+		[Under Offer],
+		(select count(*) from vCrm_PMSUnits PMS with(nolock)
+		inner join vCrm_Property PP with(nolock) on PP.iMasterId = PMS.iPropertyId
+		where PP.iMasterId=P.iMasterId and PP.TypeofProperty=TP.iMasterId and PMS.iAssignedTo=U.iMasterId and PMS.iUnitStatus=165)
+		[Renovation],
+		(select count(*) from vCrm_PMSUnits PMS with(nolock)
+		inner join vCrm_Property PP with(nolock) on PP.iMasterId = PMS.iPropertyId
+		where PP.iMasterId=P.iMasterId and PP.TypeofProperty=TP.iMasterId and PMS.iAssignedTo=U.iMasterId and PMS.iUnitStatus=166)
+		[Booked],
+		(select count(*) from vCrm_PMSUnits PMS with(nolock)
+		inner join vCrm_Property PP with(nolock) on PP.iMasterId = PMS.iPropertyId
+		where PP.iMasterId=P.iMasterId and PP.TypeofProperty=TP.iMasterId and PMS.iAssignedTo=U.iMasterId and PMS.iUnitStatus=189)
+		[Do not change ( Continue existing)],
+		(select count(*) from vCrm_PMSUnits PMS with(nolock)
+		inner join vCrm_Property PP with(nolock) on PP.iMasterId = PMS.iPropertyId
+		where PP.iMasterId=P.iMasterId and PP.TypeofProperty=TP.iMasterId and PMS.iAssignedTo=U.iMasterId and PMS.iUnitStatus=20003)
+		[Going to Vacate],
+		(select count(*) from vCrm_PMSUnits PMS with(nolock)
+		inner join vCrm_Property PP with(nolock) on PP.iMasterId = PMS.iPropertyId
+		where PP.iMasterId=P.iMasterId and PP.TypeofProperty=TP.iMasterId and PMS.iAssignedTo=U.iMasterId and PMS.iUnitStatus=20010)
+		Reserved,
+		(select count(*) from vCrm_PMSUnits PMS with(nolock)
+		inner join vCrm_Property PP with(nolock) on PP.iMasterId = PMS.iPropertyId
+		where PP.iMasterId=P.iMasterId and PP.TypeofProperty=TP.iMasterId and PMS.iAssignedTo=U.iMasterId and PMS.iUnitStatus=20013)
+		[Sold Out],
+		(select count(*) from vCrm_PMSUnits PMS with(nolock)
+		inner join vCrm_Property PP with(nolock) on PP.iMasterId = PMS.iPropertyId
+		where PP.iMasterId=P.iMasterId and PP.TypeofProperty=TP.iMasterId and PMS.iAssignedTo=U.iMasterId and PMS.iUnitStatus=0)
+		[NULL]
+		from vCrm_Users U 
+				inner join vCrm_Agent Ag on LOWER(U.sName)=Lower(Ag.sName) and Ag.iMasterId>0
+				inner join vCrm_Leads L on L.Agent=Ag.iMasterId 
+				inner join vCrm_Property P on L.Property=P.iMasterId and P.iMasterId>0
+				inner join vCrm_TypeofProperty TP on P.TypeofProperty=TP.iMasterId 
+				inner join vCore_Community C on P.Community=C.iMasterId
+			
+				where (( 0 in (@PropertyType)) or (0 not in (@PropertyType) and TP.iMasterId  in (@PropertyType))) 
+				and (( 0 in (@Property)) or (0 not in (@Property) and P.iMasterId  in (@Property)))
+				and (( 0 in (@Agent)) or (0 not in (@Agent) and Ag.iMasterId  in (@Agent))) 
+
+
+				group by Ag.sName,
+						TP.sName,
+						P.sName,
+						C.sName,
+						P.iMasterId,
+						U.iMasterId,
+						Ag.iMasterId,
+						TP.iMasterId,
+						L.Agent
+						
+
+						
