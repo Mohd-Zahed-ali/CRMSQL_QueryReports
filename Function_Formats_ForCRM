@@ -1,0 +1,28 @@
+ALTER function [dbo].[fCore_Var4](@e xml) returns varchar(max)
+as begin 
+			declare @vehicleno int =0 
+			declare @RTOName varchar(max) = ''
+			declare @imASterid int =0
+				set @vehicleno=@e.value('(/Fields/Header/VehicleNo)[1]', 'int')
+					select @RTOName=sName from vCrm_VehicleMaster with(nolock) where iMasterId = @vehicleno
+					select @imASterid=iMasterId from vCore_VehicleRTOValidityCheck with(nolock) where sName = @RTOName
+	return @imASterid
+
+end
+
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+  step 1 : CRM->Settings -> Fields -> Search Owner and Branch -> Edit Branch and Owner -> Properties then check button 'allow as parameters'
+step 2 : Trip Planner Page Layout 
+--Allow parameters for branch and Owner Fields and set &{SQLFCITEMS3} in page layout rule
+
+alter function [dbo].[fCore_Var3](@e xml) 
+returns varchar(max)
+as 
+begin
+	Declare @Branch int = @e.value('(/Fields/Header/Branch)[1]', 'int')
+	Declare @Owner int =  @e.value('(/Fields/Header/iAssignedTo)[1]', 'int')
+	Declare @result varchar(max); 
+
+	select @result = COALESCE(@result+',','')+ (concat(sName,'|',iMasterId)) from (select distinct L.sName,L.iMasterId  from vCore_InwardandOutward OI Inner join vCore_Location L on  OI.iDestination=L.iMasterId where OI.Branch=@Branch and OI.Type=38 and OI.iAssignedTo=@Owner) A
+	return @result
+end
