@@ -1,0 +1,14 @@
+select U.sName [Sales Person],
+		count(L.sName) [Total Leads],
+		sum(L.fLeadValue) [Lead Value],
+		(select count(*) from vaCrm_Leads Ls with(nolock) where Ls.iAssignedTo=U.iMasterId and iLeadStatus=87)[Converted Leads],
+		(select sum(fLeadValue) from vaCrm_Leads Ls with(nolock) where Ls.iAssignedTo=U.iMasterId and iLeadStatus=87)[Converted Leads value],
+		(select count(*) from vaCrm_Leads Ls with(nolock) where Ls.iAssignedTo=U.iMasterId and iLeadStatus<>87)[Converted Leads],
+		(select sum(fLeadValue) from vaCrm_Leads Ls with(nolock) where Ls.iAssignedTo=U.iMasterId and iLeadStatus<>87)[Total Live Leads value]
+			
+			from vaCrm_Leads L with(nolock)
+			left join vCrm_Users U with(nolock) on L.iAssignedTo = U.iMasterId
+			where L.iMasterId>0 and U.iMasterId>0
+			group by U.sName,
+					U.iMasterId
+			order by U.sName
