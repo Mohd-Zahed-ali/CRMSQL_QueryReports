@@ -1,3 +1,7 @@
+declare @SalesPerson int  = (1)
+declare @STARTDATE INT = dbo.DateToInt('2021-01-01')
+declare @ENDDATE INT = dbo.DateToInt('2021-01-31')
+
 select U.sName [Sales Person],
 		count(L.sName) [Total Leads],
 		sum(L.fLeadValue) [Lead Value],
@@ -8,7 +12,15 @@ select U.sName [Sales Person],
 			
 			from vaCrm_Leads L with(nolock)
 			left join vCrm_Users U with(nolock) on L.iAssignedTo = U.iMasterId
-			where L.iMasterId>0 and U.iMasterId>0
+			where L.iMasterId>0 and U.iMasterId>0 and 
+					 (0  in (@SalesPerson)) or (0 not in (@SalesPerson) and U.iMasterId in (@SalesPerson))
+						and
+					L.Date between @STARTDATE and @ENDDATE
+
 			group by U.sName,
 					U.iMasterId
 			order by U.sName
+
+
+	
+			
