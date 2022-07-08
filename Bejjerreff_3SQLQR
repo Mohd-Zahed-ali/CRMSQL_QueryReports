@@ -21,6 +21,18 @@ select U.sName [Sales Person],
 					U.iMasterId
 			order by U.sName
 ------------------------------------------------------------------------------------------------------------------------------------------------2 query
+select sName [Sales Person],
+		isnull((select Count(*) from vCrm_Opportunities With(Nolock) where Date between @STARTDATE and @ENDDATE and iAssignedTo=U.iMasterId and iOpportunityType=1),0)	[Total Opp. New Business],
+		isnull((select sum(fLocalNetAmountNew) from vCrm_Opportunities With(Nolock) where Date between @STARTDATE and @ENDDATE and iAssignedTo=U.iMasterId and iOpportunityType=1),0)	[Valve of Total Opp. New Business],
+		isnull((select Count(*) from vCrm_Opportunities With(Nolock) where Date between @STARTDATE and @ENDDATE and iAssignedTo=U.iMasterId and iOpportunityType=2),0)	[Total Opp. Existing Business],
+		isnull((select sum(fLocalNetAmountNew) from vCrm_Opportunities With(Nolock) where Date between @STARTDATE and @ENDDATE and iAssignedTo=U.iMasterId and iOpportunityType=2),0)[Valve of Total Opp. Existing Business],
+		isnull((select Count(*) from vCrm_Opportunities With(Nolock) where Date between @STARTDATE and @ENDDATE and iAssignedTo=U.iMasterId and iOpportunityType=1 and iStage=1),0)[Total Prospect new Business],
+		isnull((select  sum(fLocalNetAmountNew) from vCrm_Opportunities With(Nolock) where Date between @STARTDATE and @ENDDATE and  iAssignedTo=U.iMasterId and iOpportunityType=1 and iStage=1),0)[Value of prospect New Business],
+		isnull((select Count(*) from vCrm_Opportunities With(Nolock) where Date between @STARTDATE and @ENDDATE and iAssignedTo=U.iMasterId and iOpportunityType=2 and iStage=1),0)[Total Prospect Existing],
+		isnull((select  sum(fLocalNetAmountNew) from vCrm_Opportunities With(Nolock) where Date between @STARTDATE and @ENDDATE and iAssignedTo=U.iMasterId and iOpportunityType=2 and iStage=1),0)[Value of prospect Existing]
+			from vCrm_Users U with(nolock)
+			where U.iMasterId>0 and
+					(0 in (@SalesPerson)) or (0 not in (@SalesPerson) and U.iMasterId in (@SalesPerson))
 
 
 
