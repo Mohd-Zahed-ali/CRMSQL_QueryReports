@@ -1,14 +1,15 @@
+
 declare @SalesPerson int  = (1)
 declare @STARTDATE INT = dbo.DateToInt('2021-03-20')
 declare @ENDDATE INT = dbo.DateToInt('2021-03-30')
 
 select U.sName [Sales Person],
-		count(L.sName) [Total Leads],
-		sum(L.fLeadValue) [Lead Value],
-		(select count(*) from vaCrm_Leads Ls with(nolock) where Ls.Date between @STARTDATE and @ENDDATE and Ls.iAssignedTo=U.iMasterId and iLeadStatus=87)[Converted Leads],
-		(select sum(fLeadValue) from vaCrm_Leads Ls with(nolock) where Ls.Date between @STARTDATE and @ENDDATE and  Ls.iAssignedTo=U.iMasterId and iLeadStatus=87)[Converted Leads value],
-		(select count(*) from vaCrm_Leads Ls with(nolock) where Ls.Date between @STARTDATE and @ENDDATE and Ls.iAssignedTo=U.iMasterId and iLeadStatus<>87)[Converted Leads],
-		(select sum(fLeadValue) from vaCrm_Leads Ls with(nolock) where Ls.Date between @STARTDATE and @ENDDATE and Ls.iAssignedTo=U.iMasterId and iLeadStatus<>87)[Total Live Leads value]
+		isnull(count(L.sName),0) [Total Leads],
+		isnull(sum(L.fLeadValue),0) [Lead Value],
+		isnull((select count(*) from vaCrm_Leads Ls with(nolock) where Ls.Date between @STARTDATE and @ENDDATE and Ls.iAssignedTo=U.iMasterId and iLeadStatus=87),0) [Converted Leads],
+		isnull((select sum(fLeadValue) from vaCrm_Leads Ls with(nolock) where Ls.Date between @STARTDATE and @ENDDATE and  Ls.iAssignedTo=U.iMasterId and iLeadStatus=87),0) [Converted Leads value],
+		isnull((select count(*) from vaCrm_Leads Ls with(nolock) where Ls.Date between @STARTDATE and @ENDDATE and Ls.iAssignedTo=U.iMasterId and iLeadStatus<>87),0) [Total live leads],
+		isnull((select sum(fLeadValue) from vaCrm_Leads Ls with(nolock) where Ls.Date between @STARTDATE and @ENDDATE and Ls.iAssignedTo=U.iMasterId and iLeadStatus<>87),0) [Total Live Leads value]
 			
 			from vaCrm_Leads L with(nolock)
 			left join vCrm_Users U with(nolock) on L.iAssignedTo = U.iMasterId
