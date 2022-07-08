@@ -33,7 +33,73 @@ select sName [Sales Person],
 		isnull((select  sum(fLocalNetAmountNew) from vCrm_Opportunities With(Nolock) where Date between @STARTDATE and @ENDDATE and iAssignedTo=U.iMasterId and iOpportunityType=2 and iStage=1),0)[Value of prospect Existing]
 			from vCrm_Users U with(nolock)
 			where U.iMasterId>0 and
-					(0 in (@SalesPerson)) or (0 not in (@SalesPerson) and U.iMasterId in (@SalesPerson))
+					(0 in (@SalesPerson)) or (0 not in (@SalesPerson) and U.iMasterId in (@SalesPerson))\
+------------------------------------------------------------------------------------------------------------------------------------------------3rd report
+DECLARE @SalesPerson int =0
+DECLARE @STARTDATE INT = dbo.DateToInt('2021-01-01')
+DECLARE @ENDDATE INT = dbo.DateToInt('2022-12-31')
+
+select U.sName
+		[Sales Person],
+		isnull(Count(Q.iTransId),0)
+		[Total Quotation New Business],
+		isnull(sum(Q.fLocalNetAmountNew),0)
+		[Valve of Total Quotation New Business],
+		isnull((select  count(Q.iTransId)
+						from vCrm_Quote Q 
+						inner join vCrm_Opportunities O on Q.iOpportunityId=O.iTransId 
+						where O.iOpportunityType=2 
+							and Q.iAssignedTo=U.iMasterId
+							and Q.Date between @STARTDATE AND @ENDDATE),0)
+		[Total Qoutation Existing Business],
+		isnull((select  sum(Q.fLocalNetAmountNew)
+						from vCrm_Quote Q 
+						inner join vCrm_Opportunities O on Q.iOpportunityId=O.iTransId 
+						where O.iOpportunityType=2 
+							and Q.iAssignedTo=U.iMasterId
+							and Q.Date between @STARTDATE AND @ENDDATE),0)
+		[Valve of Total Quotation Existing Business],
+		(select  isnull(count(Q.iTransId),0)
+						from vCrm_Quote Q 
+						inner join vCrm_Opportunities O on Q.iOpportunityId=O.iTransId 
+						where O.iOpportunityType=1 
+							and Q.iAssignedTo=U.iMasterId
+							and Q.Date between @STARTDATE AND @ENDDATE
+							and iQuoteStatus = 518)
+		[Total In process new Business],
+		(select  isnull(sum(Q.fLocalNetAmountNew),0)
+						from vCrm_Quote Q 
+						inner join vCrm_Opportunities O on Q.iOpportunityId=O.iTransId 
+						where O.iOpportunityType=1 
+							and Q.iAssignedTo=U.iMasterId
+							and Q.Date between @STARTDATE AND @ENDDATE
+							and iQuoteStatus = 518)
+		[Value of process New Business],
+		(select  isnull(count(Q.iTransId),0)
+						from vCrm_Quote Q 
+						inner join vCrm_Opportunities O on Q.iOpportunityId=O.iTransId 
+						where O.iOpportunityType=2
+							and Q.iAssignedTo=U.iMasterId
+							and Q.Date between @STARTDATE AND @ENDDATE
+							and iQuoteStatus = 518)
+		[Total In process Quotation Existing],
+		(select  isnull(sum(Q.fLocalNetAmountNew),0)
+						from vCrm_Quote Q 
+						inner join vCrm_Opportunities O on Q.iOpportunityId=O.iTransId 
+						where O.iOpportunityType=1 
+							and Q.iAssignedTo=U.iMasterId
+							and Q.Date between @STARTDATE AND @ENDDATE
+							and iQuoteStatus = 518)
+		[Value of in process Quotation Existing]
+		from vCrm_Users U 
+			left join vCrm_Quote Q  on U.iMasterId=Q.iAssignedTo
+			inner join vCrm_Opportunities O on Q.iOpportunityId=O.iTransId
+			where U.iMasterId>0 
+			 and O.iOpportunityType=1
+			 and ((0 in (@SalesPerson)) or (0 not in (@SalesPerson) and U.iMasterId in (@SalesPerson)))
+
+				group by U.sName,U.iMasterId
+				order by U.sName
 
 
 
