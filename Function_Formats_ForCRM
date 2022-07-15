@@ -26,3 +26,22 @@ begin
 	select @result = COALESCE(@result+',','')+ (concat(sName,'|',iMasterId)) from (select distinct L.sName,L.iMasterId  from vCore_InwardandOutward OI Inner join vCore_Location L on  OI.iDestination=L.iMasterId where OI.Branch=@Branch and OI.Type=38 and OI.iAssignedTo=@Owner) A
 	return @result
 end
+5------------------------------
+alter function [fCore_Var5](@e xml) returns int
+as
+begin
+	declare @iOpportunityId int = @e.value('(/Fields/Header/iOpportunityId)[1]', 'int')
+	declare @result int = 0
+
+		select @result=count(iApprovalStatus) from vCrm_Quote with(nolock) where iOpportunityId = @iOpportunityId and iApprovalStatus =115
+
+			if(@result>=1)
+			begin
+			select @result = 1
+			end
+			else 
+			begin
+			select @result = 0
+			end
+			return @result
+end
