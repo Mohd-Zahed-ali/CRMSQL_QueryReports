@@ -45,3 +45,31 @@ begin
 			end
 			return @result
 end
+-------------xml to table as runtime -------------------imporatant for body
+alter Function fCore_Var6 (@e xml) returns decimal(18,2)
+as 
+begin
+	declare @masterId int = @e.value('(/Fields/Header/TransId)[1]', 'int')
+	--declare @StartingHrs int = @e.value('(/Fields/BodyData/AllRows/BodyRow)[1]', 'int')
+	declare @Rowindex int = @e.value('(/Fields/Header/CurrentRow)[1]', 'int')
+	declare @closingKms decimal(18,2) = 0.00;
+	declare @startKms decimal(18,2) = @e.value('(/Fields/BodyData/BodyRow/StartingKms)[1]', 'decimal(18,2)')
+	declare @result decimal(18,2) = 0.00;
+
+	if(@Rowindex=0)
+	begin
+		set @result = @startKms;
+		return @result
+	end
+
+	declare @tblData table (iRowId int identity(0,1),StartingKms decimal(18,2),ClosingKms decimal(18,2))
+	insert into @tblData (StartingKms,ClosingKms)
+	select 
+		X.Y.value('(StartingKms)[1]', 'decimal(18,2)') as StartingKms,
+		X.Y.value('(ClosingKms)[1]', 'decimal(18,2)') as ClosingKms
+	from @e.nodes('(Fields/BodyData/AllRows/BodyRow)') as X(Y)
+
+	select top 1 @result = ClosingKms from @tblData where iRowId=(@Rowindex-1);
+	return @result
+
+end
