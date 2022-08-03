@@ -73,3 +73,29 @@ begin
 	return @result
 
 end
+------------------------
+create function fCore_Var7  (@e xml) returns varchar(max)
+as begin
+	declare @product int = @e.value('(/Fields/Header/iProductGroup)[1]', 'int')
+	declare @TransId int = @e.value('(/Fields/Header/TransId)[1]', 'int')
+	declare @code varchar(max) =''
+	declare @codenum int =0
+	DECLARE @RES varchar(max)=''
+
+		select @code=sCode from vCore_Product where iMasterId =@product
+		select @codenum=count(iProductGroup) from vCore_Product where iProductGroup =@product and iMasterId<@TransId
+		set @codenum =@codenum+1
+
+			if(isnull(@code,'')<>'')
+			begin
+			SET @RES=CONCAT(@code,'-',@codenum)
+			end
+			else
+			begin
+			set @res =''
+			end
+return @RES
+end
+
+
+
