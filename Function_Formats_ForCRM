@@ -96,6 +96,23 @@ as begin
 			end
 return @RES
 end
+--------------------------
 
+alter Function fCore_Var8 (@e xml) 
+returns varchar(max)
+as 
+begin
+DECLARE @result  varchar(max) =''
+
+	declare @TransId int = @e.value('(/Fields/Header/TransId)[1]', 'int')
+	select @result= COALESCE(@result+',','')+ (concat(sName,'|',iMasterId)) from (
+	select
+	sName,iMasterId from vCrm_Account where
+	iMasterId not in
+	(select iAccount from vCrm_Opportunities where iStage not in (11,12) and iTransId>0)
+	and
+	iMasterId>0 and iMasterId<>@TransId)a
+	return @result
+end
 
 
