@@ -114,5 +114,27 @@ DECLARE @result  varchar(max) =''
 	iMasterId>0 and iMasterId<>@TransId)a
 	return @result
 end
+-------------------------
+ALTER Function [dbo].[fCore_Var8] (@e xml) 
+returns varchar(max)
+as 
+begin
+declare @TransId int = @e.value('(/Fields/Header/TransId)[1]', 'int')
+declare @Account int = @e.value('(/Fields/Header/iAccount)[1]', 'int')
+declare @stage int =0
+declare @result int =0
+select @stage=iStage from vCrm_Opportunities where iTransId =
+(select max(iTransId) from vCrm_Opportunities  where iAccount=@Account and iTransId <>@TransId)
+If(@stage in (11,12))
+begin
+set @result = 0
+end
+else
+begin
+set @result = 1
+end
+
+return @result
+end
 
 
