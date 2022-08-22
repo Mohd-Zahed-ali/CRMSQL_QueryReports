@@ -1,0 +1,50 @@
+
+declare @STARTDATE int =0
+declare @ENDDATE int =0
+declare @AcademicYear int =0
+declare @Branch int =0
+declare @Locations int =0
+
+select convert(varchar(10),dbo.IntToDate(RAF.ReceiptDate),103)[Receipt Date],
+		L.sName [Location],
+		B.sName [Branch Name],
+		U.sName [Created By],
+		AY.sName [Academic Year],
+		OFs.sName [Document Name],
+		case when OFs.LinktoReceipt=1 then 'NA'
+		when OFs.LinktoReceipt=2 then 'Not Converted'
+		when OFs.LinktoReceipt=3 then 'Converted' end [LinktoReceipt],
+		S.sName [StudentGRSTNNo],
+		RAF.StudentName,
+		RAF.FatherGuardianName [Parent Name],
+		P.sName [Class],
+		RAF.Mobile1 [Mobile 1],
+		RAF.Mobile2 [Mobile 2],
+		case when RAF.ModeofPayment=1 then 'Cash'
+		when RAF.ModeofPayment=2 then 'Cheque'
+		when RAF.ModeofPayment=3 then 'PayTm'
+		when RAF.ModeofPayment=4 then 'Debit Card'
+		when RAF.ModeofPayment=5 then 'Credit Card'
+		when RAF.ModeofPayment=6 then 'POS Machine'
+		when RAF.ModeofPayment=7 then 'Phonepe'
+		when RAF.ModeofPayment=8 then 'Net Banking' end [Mode of Payment],
+		FT.sName [Fee Name],
+		RAF.Discount [Discount],
+		RAF.FeeAmount [Amount]
+
+			from vuCore_ReceiptsforApplicationForms_General_Details RAF
+			left join vCore_Locationii L ON L.iMasterId = RAF.Locations
+			left join vCore_Location B on RAF.iLocation = B.iMasterId
+			left join vCrm_Users U on RAF.iCreatedBy = U.iMasterId
+			left join vCrm_AcademicYear AY on RAF.AcademicYear = AY.iMasterId
+			left join vCore_OtherFees OFs on RAF.StudentGRSTNNo=OFs.StudentGRSTNNo
+			left join vCrm_Students S on RAF.StudentGRSTNNo = S.iTransId
+			left join vCrm_Program P on RAF.Class = P.iMasterId
+			left join vCrm_FeeType FT on RAF.FeeName = FT.iMasterId
+ 			 where
+			  RAF.StudentGRSTNNo>0 and
+			  RAF.iMasterId=24118 and
+			  RAF.ReceiptDate between @STARTDATE AND @ENDDATE AND
+			  RAF.AcademicYear = iif(@AcademicYear>0,@AcademicYear,RAF.AcademicYear)
+			  and RAF.iLocation = iif(@Branch>0,@Branch,RAF.iLocation)
+			  and RAF.Locations = iif(@Locations>0,@Locations,RAF.Locations)
