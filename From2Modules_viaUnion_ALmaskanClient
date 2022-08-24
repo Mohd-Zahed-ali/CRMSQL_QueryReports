@@ -1,0 +1,167 @@
+declare @UnitType int =0
+declare @UnitSubType int =0
+declare @Agent int =13
+declare @PropertyType int =0
+declare @Property int =0
+
+select [Agent Name],
+		[Type of Property],
+		[Property Name],
+		Community,
+		sum([Unit Type])[Unit Type],
+		sum([Count of Unit Sub Type]) [Count of Unit Sub Type],
+		sum([Price ( Annual Rent/Sales)])[Price ( Annual Rent/Sales)],
+		sum([Leads Count]) [Leads Count],
+		sum(Qualified) Qualified,
+		sum(Deal) Deal,
+		sum(Vacant) Vacant,
+		sum(Occupied) Occupied,
+		sum([Under Offer]) [Under Offer],
+		sum(Renovation) Renovation,
+		sum(Booked) Booked,
+		SUM([Do not change ( Continue existing)]) [Do not change ( Continue existing)],
+		sum([Going to Vacate]) [Going to Vacate],
+		sum(Reserved) Reserved,
+		sum([Sold Out]) [Sold Out],
+		sum([NULL]) [NULL]
+			from (
+select distinct
+		Ag.sName[Agent Name],
+		TP.sName [Type of Property],
+		P.sName [Property Name],
+		C.sName [Community],
+		0[Unit Type],
+		0[Count of Unit Sub Type],
+		0[Price ( Annual Rent/Sales)],
+		count(L.Agent)
+		[Leads Count],
+		(select count(Ld.LeadStage) from vCrm_Leads Ld with(nolock) where Ld.Property=P.iMasterId and Ld.Agent=Ag.iMasterId and  Ld.LeadStage in (34))
+		[Qualified],
+		(select count(Ld.LeadStage) from vCrm_Leads Ld with(nolock) where Ld.Property=P.iMasterId and Ld.Agent=Ag.iMasterId and  Ld.LeadStage in (44))
+		[Deal],
+		0[Vacant],
+		0[Occupied],
+		0[Under Offer],
+		0[Renovation],
+		0[Booked],
+		0[Do not change ( Continue existing)],
+		0[Going to Vacate],
+		0[Reserved],
+		0[Sold Out],
+		0[NULL]
+		from vCrm_Users U 
+				inner join vCrm_Agent Ag on LOWER(U.sName)=Lower(Ag.sName) and Ag.iMasterId>0
+				inner join vCrm_Leads L on L.Agent=Ag.iMasterId 
+				inner join vCrm_Property P on L.Property=P.iMasterId and P.iMasterId>0
+				inner join vCrm_TypeofProperty TP on P.TypeofProperty=TP.iMasterId 
+				inner join vCore_Community C on P.Community=C.iMasterId
+			
+				where (( 0 in (@PropertyType)) or (0 not in (@PropertyType) and TP.iMasterId  in (@PropertyType))) 
+				and (( 0 in (@Property)) or (0 not in (@Property) and P.iMasterId  in (@Property)))
+				and (( 0 in (@Agent)) or (0 not in (@Agent) and Ag.iMasterId  in (@Agent))) 
+				group by Ag.sName,
+						TP.sName,
+						P.sName,
+						C.sName,
+						P.iMasterId,
+						U.iMasterId,
+						Ag.iMasterId,
+						TP.iMasterId,
+						L.Agent
+			union ALL 
+			select distinct
+		Ag.sName[Agent Name],
+		TP.sName [Type of Property],
+		P.sName [Property Name],
+		C.sName [Community],
+		(select count(*) from vCrm_PMSUnits PMS with(nolock) where PMS.iPropertyId=P.iMasterId and iAssignedTo=U.iMasterId and (( 0 in (@UnitType)) or (0 not in (@UnitType) and PMS.UnitType in (@UnitType))))[Unit Type],
+		
+		(select count(*) from vCrm_PMSUnits with(nolock) where iPropertyId=P.iMasterId and UnitSubType>0 and iAssignedTo=U.iMasterId and (( 0 in (@UnitSubType)) or (0 not in (@UnitSubType) and UnitSubType in (@UnitSubType)))) [Count of Unit Sub Type],
+		isnull((select Sum(fPrice) from vCrm_PMSUnits with(nolock) where iPropertyId=P.iMasterId and iAssignedTo=U.iMasterId),0)[Price ( Annual Rent/Sales)],
+		0[Leads Count],
+		0[Qualified],
+		0[Deal],
+		(select count(*) from vCrm_PMSUnits PMS with(nolock)
+		inner join vCrm_Property PP with(nolock) on PP.iMasterId = PMS.iPropertyId
+		inner join(SELECT U.iMasterId[Umaster],Ag.iMasterId [AgMaster] FROM vCrm_Users U 
+				inner join vCrm_Agent Ag on LOWER(U.sName)=Lower(Ag.sName) and Ag.iMasterId>0)Us on PMS.iAssignedTo=Us.Umaster
+		where PP.iMasterId=P.iMasterId and PP.TypeofProperty=TP.iMasterId and PMS.iAssignedTo=U.iMasterId and PMS.iUnitStatus=162 and (( 0 in (@UnitType)) or (0 not in (@UnitType) and PMS.UnitType in (@UnitType))) and (( 0 in (@UnitSubType)) or (0 not in (@UnitSubType) and PMS.UnitSubType in (@UnitSubType))) and (( 0 in (@Agent)) or (0 not in (@Agent) and Us.AgMaster  in (@Agent))))
+		[Vacant],
+		(select count(*) from vCrm_PMSUnits PMS with(nolock)
+		inner join vCrm_Property PP with(nolock) on PP.iMasterId = PMS.iPropertyId
+		inner join(SELECT U.iMasterId[Umaster],Ag.iMasterId [AgMaster] FROM vCrm_Users U 
+				inner join vCrm_Agent Ag on LOWER(U.sName)=Lower(Ag.sName) and Ag.iMasterId>0)Us on PMS.iAssignedTo=Us.Umaster
+		where PP.iMasterId=P.iMasterId and PP.TypeofProperty=TP.iMasterId and PMS.iAssignedTo=U.iMasterId and PMS.iUnitStatus=163 and (( 0 in (@UnitType)) or (0 not in (@UnitType) and PMS.UnitType in (@UnitType))) and (( 0 in (@UnitSubType)) or (0 not in (@UnitSubType) and PMS.UnitSubType in (@UnitSubType))) and (( 0 in (@Agent)) or (0 not in (@Agent) and Us.AgMaster  in (@Agent))))
+		[Occupied],
+		(select count(*) from vCrm_PMSUnits PMS with(nolock)
+		inner join vCrm_Property PP with(nolock) on PP.iMasterId = PMS.iPropertyId
+inner join(SELECT U.iMasterId[Umaster],Ag.iMasterId [AgMaster] FROM vCrm_Users U 
+				inner join vCrm_Agent Ag on LOWER(U.sName)=Lower(Ag.sName) and Ag.iMasterId>0)Us on PMS.iAssignedTo=Us.Umaster		
+where PP.iMasterId=P.iMasterId and PP.TypeofProperty=TP.iMasterId and PMS.iAssignedTo=U.iMasterId and PMS.iUnitStatus=164 and (( 0 in (@UnitType)) or (0 not in (@UnitType) and PMS.UnitType in (@UnitType))) and (( 0 in (@UnitSubType)) or (0 not in (@UnitSubType) and PMS.UnitSubType in (@UnitSubType))) and (( 0 in (@Agent)) or (0 not in (@Agent) and Us.AgMaster  in (@Agent))))
+		[Under Offer],
+		(select count(*) from vCrm_PMSUnits PMS with(nolock)
+		inner join vCrm_Property PP with(nolock) on PP.iMasterId = PMS.iPropertyId
+inner join(SELECT U.iMasterId[Umaster],Ag.iMasterId [AgMaster] FROM vCrm_Users U 
+				inner join vCrm_Agent Ag on LOWER(U.sName)=Lower(Ag.sName) and Ag.iMasterId>0)Us on PMS.iAssignedTo=Us.Umaster		
+where PP.iMasterId=P.iMasterId and PP.TypeofProperty=TP.iMasterId and PMS.iAssignedTo=U.iMasterId and PMS.iUnitStatus=165 and (( 0 in (@UnitType)) or (0 not in (@UnitType) and PMS.UnitType in (@UnitType))) and (( 0 in (@UnitSubType)) or (0 not in (@UnitSubType) and PMS.UnitSubType in (@UnitSubType))) and (( 0 in (@Agent)) or (0 not in (@Agent) and Us.AgMaster  in (@Agent))))
+		[Renovation],
+		(select count(*) from vCrm_PMSUnits PMS with(nolock)
+		inner join vCrm_Property PP with(nolock) on PP.iMasterId = PMS.iPropertyId
+inner join(SELECT U.iMasterId[Umaster],Ag.iMasterId [AgMaster] FROM vCrm_Users U 
+				inner join vCrm_Agent Ag on LOWER(U.sName)=Lower(Ag.sName) and Ag.iMasterId>0)Us on PMS.iAssignedTo=Us.Umaster		
+where PP.iMasterId=P.iMasterId and PP.TypeofProperty=TP.iMasterId and PMS.iAssignedTo=U.iMasterId and PMS.iUnitStatus=166 and (( 0 in (@UnitType)) or (0 not in (@UnitType) and PMS.UnitType in (@UnitType))) and (( 0 in (@UnitSubType)) or (0 not in (@UnitSubType) and PMS.UnitSubType in (@UnitSubType))) and (( 0 in (@Agent)) or (0 not in (@Agent) and Us.AgMaster  in (@Agent))))
+		[Booked],
+		(select count(*) from vCrm_PMSUnits PMS with(nolock)
+		inner join vCrm_Property PP with(nolock) on PP.iMasterId = PMS.iPropertyId
+inner join(SELECT U.iMasterId[Umaster],Ag.iMasterId [AgMaster] FROM vCrm_Users U 
+				inner join vCrm_Agent Ag on LOWER(U.sName)=Lower(Ag.sName) and Ag.iMasterId>0)Us on PMS.iAssignedTo=Us.Umaster		
+where PP.iMasterId=P.iMasterId and PP.TypeofProperty=TP.iMasterId and PMS.iAssignedTo=U.iMasterId and PMS.iUnitStatus=189 and (( 0 in (@UnitType)) or (0 not in (@UnitType) and PMS.UnitType in (@UnitType))) and (( 0 in (@UnitSubType)) or (0 not in (@UnitSubType) and PMS.UnitSubType in (@UnitSubType))) and (( 0 in (@Agent)) or (0 not in (@Agent) and Us.AgMaster  in (@Agent))))
+		[Do not change ( Continue existing)],
+		(select count(*) from vCrm_PMSUnits PMS with(nolock)
+		inner join vCrm_Property PP with(nolock) on PP.iMasterId = PMS.iPropertyId
+inner join(SELECT U.iMasterId[Umaster],Ag.iMasterId [AgMaster] FROM vCrm_Users U 
+				inner join vCrm_Agent Ag on LOWER(U.sName)=Lower(Ag.sName) and Ag.iMasterId>0)Us on PMS.iAssignedTo=Us.Umaster		
+where PP.iMasterId=P.iMasterId and PP.TypeofProperty=TP.iMasterId and PMS.iAssignedTo=U.iMasterId and PMS.iUnitStatus=20003 and (( 0 in (@UnitType)) or (0 not in (@UnitType) and PMS.UnitType in (@UnitType))) and (( 0 in (@UnitSubType)) or (0 not in (@UnitSubType) and PMS.UnitSubType in (@UnitSubType))) and (( 0 in (@Agent)) or (0 not in (@Agent) and Us.AgMaster  in (@Agent))))
+		[Going to Vacate],
+		(select count(*) from vCrm_PMSUnits PMS with(nolock)
+		inner join vCrm_Property PP with(nolock) on PP.iMasterId = PMS.iPropertyId
+inner join(SELECT U.iMasterId[Umaster],Ag.iMasterId [AgMaster] FROM vCrm_Users U 
+				inner join vCrm_Agent Ag on LOWER(U.sName)=Lower(Ag.sName) and Ag.iMasterId>0)Us on PMS.iAssignedTo=Us.Umaster		
+where PP.iMasterId=P.iMasterId and PP.TypeofProperty=TP.iMasterId and PMS.iAssignedTo=U.iMasterId and PMS.iUnitStatus=20010 and (( 0 in (@UnitType)) or (0 not in (@UnitType) and PMS.UnitType in (@UnitType))) and (( 0 in (@UnitSubType)) or (0 not in (@UnitSubType) and PMS.UnitSubType in (@UnitSubType))) and (( 0 in (@Agent)) or (0 not in (@Agent) and Us.AgMaster  in (@Agent))))
+		Reserved,
+		(select count(*) from vCrm_PMSUnits PMS with(nolock)
+		inner join vCrm_Property PP with(nolock) on PP.iMasterId = PMS.iPropertyId
+inner join(SELECT U.iMasterId[Umaster],Ag.iMasterId [AgMaster] FROM vCrm_Users U 
+				inner join vCrm_Agent Ag on LOWER(U.sName)=Lower(Ag.sName) and Ag.iMasterId>0)Us on PMS.iAssignedTo=Us.Umaster		
+where PP.iMasterId=P.iMasterId and PP.TypeofProperty=TP.iMasterId and PMS.iAssignedTo=U.iMasterId and PMS.iUnitStatus=20013 and (( 0 in (@UnitType)) or (0 not in (@UnitType) and PMS.UnitType in (@UnitType))) and (( 0 in (@UnitSubType)) or (0 not in (@UnitSubType) and PMS.UnitSubType in (@UnitSubType))) and (( 0 in (@Agent)) or (0 not in (@Agent) and Us.AgMaster  in (@Agent))))
+		[Sold Out],
+		(select count(*) from vCrm_PMSUnits PMS with(nolock)
+		inner join vCrm_Property PP with(nolock) on PP.iMasterId = PMS.iPropertyId
+inner join(SELECT U.iMasterId[Umaster],Ag.iMasterId [AgMaster] FROM vCrm_Users U 
+				inner join vCrm_Agent Ag on LOWER(U.sName)=Lower(Ag.sName) and Ag.iMasterId>0)Us on PMS.iAssignedTo=Us.Umaster		
+where PP.iMasterId=P.iMasterId and PP.TypeofProperty=TP.iMasterId and PMS.iAssignedTo=U.iMasterId and PMS.iUnitStatus=0 and (( 0 in (@UnitType)) or (0 not in (@UnitType) and PMS.UnitType in (@UnitType))) and (( 0 in (@UnitSubType)) or (0 not in (@UnitSubType) and PMS.UnitSubType in (@UnitSubType))) and (( 0 in (@Agent)) or (0 not in (@Agent) and Us.AgMaster  in (@Agent))))
+		[NULL]
+		from vCrm_Users U 
+				inner join vCrm_Agent Ag on LOWER(U.sName)=Lower(Ag.sName) and Ag.iMasterId>0
+				inner join vCrm_PMSUnits L on L.iAssignedTo=U.iMasterId 
+				inner join vCrm_Property P on L.iPropertyId=P.iMasterId and P.iMasterId>0
+				inner join vCrm_TypeofProperty TP on P.TypeofProperty=TP.iMasterId 
+				inner join vCore_Community C on P.Community=C.iMasterId
+			
+				where (( 0 in (@PropertyType)) or (0 not in (@PropertyType) and TP.iMasterId  in (@PropertyType))) 
+				and (( 0 in (@Property)) or (0 not in (@Property) and P.iMasterId  in (@Property)))
+				and (( 0 in (@Agent)) or (0 not in (@Agent) and Ag.iMasterId  in (@Agent))) 
+				group by Ag.sName,
+						TP.sName,
+						P.sName,
+						C.sName,
+						P.iMasterId,
+						U.iMasterId,
+						Ag.iMasterId,
+						TP.iMasterId,
+						L.iAssignedTo
+						)a group by [Agent Name],
+		[Type of Property],
+		[Property Name],
+		Community
+		
