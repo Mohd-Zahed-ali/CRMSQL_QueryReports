@@ -210,6 +210,61 @@ select
 				P.iMasterId,
 				TP.iMasterId,
 				P.TypeofProperty
-						
+---------DASHBOARD
+select
+		(select sName from vCrm_Agent with(nolock) where iMasterId=@Agent)[Agent Name],
+		PT.sName [Property Type],
+		(select Count(*) from vCrm_Leads L with(nolock) inner join vCrm_Property P with(nolock) on L.Property=P.iMasterId and P.iMasterId>0 where L.EnquiryDate BETWEEN
+		@STARTDATETIME AND @ENDDATETIME and L.Agent=IIF(@Agent>0,@Agent,L.Agent) and P.TypeofProperty=PT.iMasterId)
+		[Leads count],
+		(select count(L.LeadStage) from vCrm_Leads L with(nolock) inner join vCrm_Property P with(nolock) on L.Property=P.iMasterId and P.iMasterId>0 where L.EnquiryDate BETWEEN
+		@STARTDATETIME AND @ENDDATETIME and L.Agent=IIF(@Agent>0,@Agent,L.Agent) and P.TypeofProperty=PT.iMasterId and L.LeadStage in (34) )[Qualified],
+		( select count(L.LeadStage) from vCrm_Leads L with(nolock) inner join vCrm_Property P with(nolock) on L.Property=P.iMasterId and P.iMasterId>0 where L.EnquiryDate BETWEEN
+		@STARTDATETIME AND @ENDDATETIME  and L.Agent=IIF(@Agent>0,@Agent,L.Agent) and P.TypeofProperty=PT.iMasterId and L.LeadStage in (40,43,44) )[Deal],
+		(select COUNT(*) from vCrm_PMSUnits PMS inner join vCrm_Property P on PMS.iPropertyId = P.iMasterId where PMS.iAssignedTo = (SELECT 
+				iMasterId from vCrm_Users where LOWER(sName)=(select lower(sName) from vCrm_Agent where iMasterId = @Agent)) and PMS.iPropertyId=LP1.iMasterId  and P.TypeofProperty =LP1.TypeofProperty
+				and PMS.iUnitStatus = 162)
+		[Vacant],
+		((select COUNT(*) from vCrm_PMSUnits PMS inner join vCrm_Property P on PMS.iPropertyId = P.iMasterId where PMS.iAssignedTo = (SELECT 
+				iMasterId from vCrm_Users where LOWER(sName)=(select lower(sName) from vCrm_Agent where iMasterId = @Agent)) and PMS.iPropertyId=LP1.iMasterId  and P.TypeofProperty =LP1.TypeofProperty
+				and PMS.iUnitStatus = 163))
+		[Occupied],
+		(select COUNT(*) from vCrm_PMSUnits PMS inner join vCrm_Property P on PMS.iPropertyId = P.iMasterId where PMS.iAssignedTo = (SELECT 
+				iMasterId from vCrm_Users where LOWER(sName)=(select lower(sName) from vCrm_Agent where iMasterId = @Agent)) and PMS.iPropertyId=LP1.iMasterId  and P.TypeofProperty =LP1.TypeofProperty
+				and PMS.iUnitStatus = 164)
+		[Under Offer],
+		(select COUNT(*) from vCrm_PMSUnits PMS inner join vCrm_Property P on PMS.iPropertyId = P.iMasterId where PMS.iAssignedTo = (SELECT 
+				iMasterId from vCrm_Users where LOWER(sName)=(select lower(sName) from vCrm_Agent where iMasterId = @Agent)) and PMS.iPropertyId=LP1.iMasterId  and P.TypeofProperty =LP1.TypeofProperty
+				and PMS.iUnitStatus = 165)
+		[Renovation],
+		(select COUNT(*) from vCrm_PMSUnits PMS inner join vCrm_Property P on PMS.iPropertyId = P.iMasterId where PMS.iAssignedTo = (SELECT 
+				iMasterId from vCrm_Users where LOWER(sName)=(select lower(sName) from vCrm_Agent where iMasterId = @Agent)) and PMS.iPropertyId=LP1.iMasterId  and P.TypeofProperty =LP1.TypeofProperty
+				and PMS.iUnitStatus = 166)
+		[Booked],
+		(select COUNT(*) from vCrm_PMSUnits PMS inner join vCrm_Property P on PMS.iPropertyId = P.iMasterId where PMS.iAssignedTo = (SELECT 
+				iMasterId from vCrm_Users where LOWER(sName)=(select lower(sName) from vCrm_Agent where iMasterId = @Agent)) and PMS.iPropertyId=LP1.iMasterId  and P.TypeofProperty =LP1.TypeofProperty
+				and PMS.iUnitStatus = 189)
+		[Do not change ( Continue existing)],
+		(select COUNT(*) from vCrm_PMSUnits PMS inner join vCrm_Property P on PMS.iPropertyId = P.iMasterId where PMS.iAssignedTo = (SELECT 
+				iMasterId from vCrm_Users where LOWER(sName)=(select lower(sName) from vCrm_Agent where iMasterId = @Agent)) and PMS.iPropertyId=LP1.iMasterId  and P.TypeofProperty =LP1.TypeofProperty
+				and PMS.iUnitStatus = 20003)
+		[Going to Vacate],
+		(select COUNT(*) from vCrm_PMSUnits PMS inner join vCrm_Property P on PMS.iPropertyId = P.iMasterId where PMS.iAssignedTo = (SELECT 
+				iMasterId from vCrm_Users where LOWER(sName)=(select lower(sName) from vCrm_Agent where iMasterId = @Agent)) and PMS.iPropertyId=LP1.iMasterId  and P.TypeofProperty =LP1.TypeofProperty
+				and PMS.iUnitStatus = 20010)
+		Reserved,
+		(select COUNT(*) from vCrm_PMSUnits PMS inner join vCrm_Property P on PMS.iPropertyId = P.iMasterId where PMS.iAssignedTo = (SELECT 
+				iMasterId from vCrm_Users where LOWER(sName)=(select lower(sName) from vCrm_Agent where iMasterId = @Agent)) and PMS.iPropertyId=LP1.iMasterId  and P.TypeofProperty =LP1.TypeofProperty
+				and PMS.iUnitStatus = 20013)
+		[Sold Out],
+		(select COUNT(*) from vCrm_PMSUnits PMS inner join vCrm_Property P on PMS.iPropertyId = P.iMasterId where PMS.iAssignedTo = (SELECT 
+				iMasterId from vCrm_Users where LOWER(sName)=(select lower(sName) from vCrm_Agent where iMasterId = @Agent)) and PMS.iPropertyId=LP1.iMasterId  and P.TypeofProperty =LP1.TypeofProperty
+				and PMS.iUnitStatus = 0)
+		[NULL] 
+		from vCore_TypeofProperty PT with(nolock) inner join 
+				(select distinct P.TypeofProperty,P.iMasterId from vCrm_Leads L with(nolock) inner join
+				vCrm_Property P with(nolock) on L.Property=P.iMasterId and P.iMasterId>0
+				where L.EnquiryDate BETWEEN
+				@STARTDATETIME AND @ENDDATETIME and L.Agent=IIF(@Agent>0,@Agent,L.Agent))LP1 on PT.iMasterId=LP1.TypeofProperty
 
 						
